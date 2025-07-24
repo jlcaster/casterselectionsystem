@@ -1,3 +1,4 @@
+
 <!DOCTYPE html><html lang="zh-CN"><heac:\Users\36749\caster-site\index.htmld>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -862,36 +863,7 @@
                 </div>
                 <div class="datetime-weather">
                     <div id="current-date">2025年7月11日 星期五</div>
-                    <div id="weather">阳江天气: <span id="weather-info">加载中...</span></div>
-                    <script>
-                        // 天气数据处理回调函数
-                        function handleWeatherData(data) {
-                            if (data && data.code === 200) {
-                                const weatherInfo = data.data.realtime;
-                                const temp = weatherInfo.temp + '℃';
-                                const weather = weatherInfo.weather;
-                                const wind = `${weatherInfo.windDir} ${weatherInfo.windPower}级`;
-                                document.getElementById('weather-info').textContent = `${weather} ${temp} ${wind}`;
-                            } else {
-                                document.getElementById('weather-info').textContent = '获取失败';
-                            }
-                        }
-                        
-                        // 动态加载天气数据（使用JSONP解决跨域问题）
-                        function loadWeatherData() {
-                            const script = document.createElement('script');
-                            // 使用支持JSONP的天气接口，阳江市城市代码101281801
-                            const timestamp = new Date().getTime();
-                            script.src = `https://api.seniverse.com/v3/weather/now.json?key=S8pL3U4fLxpvH2qQV&location=yangjiang&language=zh-Hans&unit=c&callback=handleWeatherData&_=${timestamp}`;
-                            script.onerror = function() {
-                                document.getElementById('weather-info').textContent = '加载失败';
-                            };
-                            document.head.appendChild(script);
-                        }
-                        
-                        // 页面加载完成后获取天气数据
-                        window.addEventListener('load', loadWeatherData);
-                    </script>
+                    <div id="weather">阳江天气: 晴 24℃</div>
                 </div>
             </div>
         </header>
