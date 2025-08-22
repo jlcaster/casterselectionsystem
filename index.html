@@ -2239,6 +2239,32 @@
                 }
             }, 1000); // 适当缩短延迟时间
         });
+
+        // 定期刷新访问计数器，确保所有浏览器显示一致
+        function startCounterRefresh() {
+            // 每30秒刷新一次计数器显示
+            setInterval(() => {
+                const projectId = 'jianglong-caster';
+                const counterId = 'website-visits';
+                const apiUrl = `https://api.countapi.xyz`;
+                
+                fetch(`${apiUrl}/get/${projectId}/${counterId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.value) {
+                            updateCounterUI(data.value);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('刷新计数器失败:', error);
+                    });
+            }, 30000); // 30秒刷新一次
+        }
+
+        // 页面加载完成后启动定期刷新
+        window.addEventListener('load', function() {
+            setTimeout(startCounterRefresh, 5000); // 5秒后开始定期刷新
+        });
         
         // 监听"使用环境"变化，自动触发计算
         document.getElementById('environment').addEventListener('change', function() {
@@ -2312,32 +2338,26 @@
             const apiUrl = `https://api.countapi.xyz`;
             const initialValue = 16000; // 初始计数从16000开始
 
-            // 检查并设置初始值（仅首次使用时）
-            fetch(`${apiUrl}/get/${projectId}/${counterId}`)
+            // 直接增加计数，然后获取最新值
+            fetch(`${apiUrl}/hit/${projectId}/${counterId}`)
                 .then(response => response.json())
                 .then(data => {
                     // 如果计数器不存在或值小于初始值，则设置为初始值
                     if (data.value === null || data.value < initialValue) {
                         return fetch(`${apiUrl}/set/${projectId}/${counterId}/${initialValue}`)
-                            .then(res => res.json());
+                            .then(res => res.json())
+                            .then(setData => {
+                                // 设置后再次增加计数
+                                return fetch(`${apiUrl}/hit/${projectId}/${counterId}`)
+                                    .then(res => res.json());
+                            });
                     }
                     return data;
                 })
                 .then(data => {
                     let visitCount = data.value || initialValue;
-
-                    // 更新UI显示
+                    // 更新UI显示最新计数
                     updateCounterUI(visitCount);
-
-                    // 每次页面加载都增加计数（全球统计）
-                    fetch(`${apiUrl}/hit/${projectId}/${counterId}`)
-                        .then(response => response.json())
-                        .then(update => {
-                            updateCounterUI(update.value);
-                        })
-                        .catch(error => {
-                            console.error('增加计数失败:', error);
-                        });
                 })
                 .catch(error => {
                     console.error('访问计数器错误:', error);
