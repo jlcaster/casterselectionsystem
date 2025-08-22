@@ -2304,7 +2304,7 @@
             };
         });
 
-        // 访问计数器功能 - 全球共享版本
+        // 访问计数器功能 - 全球共享版本（每次访问都计数）
         function updateVisitCounter() {
             // CountAPI 配置
             const projectId = 'jianglong-caster'; // 项目唯一标识符
@@ -2329,15 +2329,15 @@
                     // 更新UI显示
                     updateCounterUI(visitCount);
 
-                    // 增加计数（仅在新访问时）
-                    if (!sessionStorage.getItem('hasVisited')) {
-                        fetch(`${apiUrl}/hit/${projectId}/${counterId}`)
-                            .then(response => response.json())
-                            .then(update => {
-                                updateCounterUI(update.value);
-                                sessionStorage.setItem('hasVisited', 'true');
-                            });
-                    }
+                    // 每次页面加载都增加计数（全球统计）
+                    fetch(`${apiUrl}/hit/${projectId}/${counterId}`)
+                        .then(response => response.json())
+                        .then(update => {
+                            updateCounterUI(update.value);
+                        })
+                        .catch(error => {
+                            console.error('增加计数失败:', error);
+                        });
                 })
                 .catch(error => {
                     console.error('访问计数器错误:', error);
