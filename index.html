@@ -2644,4 +2644,25 @@
         }
     </script>
 
-</body></html>
+</body>
+
+<!-- 计数器容器（预留） -->
+<div id="page-visit-counter" style="display:none"></div>
+
+<script>
+(function() {
+  try {
+    if (window.Site && typeof Site.total === 'function') {
+      Site.total({ colId: 12, pdId: -1, ndId: -1, sc: 0, statId: (typeof statId !== 'undefined' ? statId : -1) });
+    }
+  } catch (e) {}
+
+  try {
+    if (window.Site && typeof Site.sendBrowerInfo === 'function') {
+      Site.sendBrowerInfo(false);
+    }
+  } catch (e) {}
+})();
+</script>
+
+</html>
