@@ -359,12 +359,41 @@
         }
         
         .footer {
-            text-align: center;
             padding: 20px;
             color: #4a5568;
             font-size: 0.9rem;
             background: #f8fafc;
             border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .visitor-counter {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+        
+        .company-info {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        
+        .company-info p {
+            margin: 2px 0;
         }
         
         .hidden {
@@ -1039,8 +1068,15 @@
         </div>
         
         <div class="footer">
-            <p>© 2025 阳江市江龙精密脚轮有限公司 | 专业脚轮解决方案提供商</p>
-            <p>ISO 9001:2015 质量认证企业 | 100+项技术专利 | 服务全球3000+客户</p>
+            <div class="footer-content">
+                <div class="visitor-counter" id="visitor-counter">
+                    <!-- 访问计数器将在这里动态生成 -->
+                </div>
+                <div class="company-info">
+                    <p>© 2025 阳江市江龙精密脚轮有限公司 | 专业脚轮解决方案提供商</p>
+                    <p>ISO 9001:2015 质量认证企业 | 100+项技术专利 | 服务全球3000+客户</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2191,11 +2227,13 @@
         
         // 确保DOM加载完成后执行初始计算
         document.addEventListener('DOMContentLoaded', function() {
+            setupImageErrorHandlers();
             setTimeout(() => {
                 const calculateBtn = document.getElementById('calculate-btn');
                 if (calculateBtn) {
                     calculateBtn.click();
                     updateDateTime();
+                    updateVisitCounter();
                 } else {
                     console.error('计算按钮未找到，无法自动触发计算');
                 }
@@ -2207,11 +2245,269 @@
             document.getElementById('calculate-btn').click();
         });
         
+        // 为所有外部图片添加错误处理
+        function setupImageErrorHandlers() {
+            // 替换为caster-site版本的图片处理逻辑
+            // 1. 更新bracketSeries中的图片链接为free.picui.cn格式
+            bracketSeries.forEach(series => {
+                // 已手动更新所有链接，保留此代码仅用于处理旧的superbed链接
+                if (series.imageUrl && series.imageUrl.includes('free.superbed.cn')) {
+                    // 提取文件名
+                    const fileName = series.imageUrl.split('/').pop();
+                    // 生成新的free.picui.cn链接
+                    series.imageUrl = `https://free.picui.cn/free/2025/08/20/${fileName}`;
+                }
+                // 处理imageHtml属性
+                if (series.imageHtml) {
+                    // 替换为free.picui.cn链接
+                    series.imageHtml = series.imageHtml.replace(/src="https:\/\/free\.superbed\.cn\/store\/images\//g, 'src="https://free.picui.cn/free/2025/08/20/');
+                    // 添加onerror属性
+                    series.imageHtml = series.imageHtml.replace(/<img/g, '<img onerror="handleImageError(this)"');
+                }
+            });
+        }
+
         // 图片错误处理函数
         function handleImageError(img, fallbackSrc) {
             console.error(`图片加载失败: ${img.src}`);
             img.onerror = null; // 防止无限循环
-            img.src = fallbackSrc;
+
+            // 如果图片还没有尝试过重试，则进行重试
+            if (!img.dataset.retryAttempted) {
+                img.dataset.retryAttempted = 'true';
+                
+                // 添加时间戳避免缓存问题
+                const separator = img.src.includes('?') ? '&' : '?';
+                const retrySrc = `${img.src}${separator}t=${Date.now()}`;
+                console.log(`尝试重新加载图片: ${retrySrc}`);
+                
+                img.src = retrySrc;
+                img.onerror = function() {
+                    console.error(`重试后图片仍加载失败: ${retrySrc}`);
+                    // 最终失败，显示默认图片
+                    img.src = fallbackSrc || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22180%22%20height%3D%22120%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22180%22%20height%3D%22120%22%20fill%3D%22%23f0f0f0%22%2F%3E%3Ctext%20x%3D%2290%22%20y%3D%2260%22%20text-anchor%3D%22middle%22%20fill%3D%22%23999%22%20font-family%3D%22Arial%22%20font-size%3D%2212%22%3E图片加载失败%3C%2Ftext%3E%3C%2Fsvg%3E';
+                    img.style.border = '1px solid #ddd';
+                };
+            } else {
+                // 已经重试过，显示默认图片
+                img.src = fallbackSrc || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22180%22%20height%3D%22120%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22180%22%20height%3D%22120%22%20fill%3D%22%23f0f0f0%22%2F%3E%3Ctext%20x%3D%2290%22%20y%3D%2260%22%20text-anchor%3D%22middle%22%20fill%3D%22%23999%22%20font-family%3D%22Arial%22%20font-size%3D%2212%22%3E图片加载失败%3C%2Ftext%3E%3C%2Fsvg%3E';
+                img.style.border = '1px solid #ddd';
+            }
+        }
+
+        // 3. 更新logo图片链接
+        const logoUrl = 'https://pic1.imgdb.cn/item/687f46bb58cb8da5c8cb2189.png';
+        document.querySelectorAll('img[alt="logo水印"]').forEach(img => {
+            img.src = logoUrl;
+            img.onerror = function() {
+                handleImageError(this);
+            };
+        });
+
+        // 访问计数器功能 - 全球共享版本
+        function updateVisitCounter() {
+            // CountAPI 配置
+            const projectId = 'jianglong-caster'; // 项目唯一标识符
+            const counterId = 'website-visits';  // 计数器标识符
+            const apiUrl = `https://api.countapi.xyz`;
+            const initialValue = 16000; // 初始计数从16000开始
+
+            // 检查并设置初始值（仅首次使用时）
+            fetch(`${apiUrl}/get/${projectId}/${counterId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // 如果计数器不存在或值小于初始值，则设置为初始值
+                    if (data.value === null || data.value < initialValue) {
+                        return fetch(`${apiUrl}/set/${projectId}/${counterId}/${initialValue}`)
+                            .then(res => res.json());
+                    }
+                    return data;
+                })
+                .then(data => {
+                    let visitCount = data.value || initialValue;
+
+                    // 更新UI显示
+                    updateCounterUI(visitCount);
+
+                    // 增加计数（仅在新访问时）
+                    if (!sessionStorage.getItem('hasVisited')) {
+                        fetch(`${apiUrl}/hit/${projectId}/${counterId}`)
+                            .then(response => response.json())
+                            .then(update => {
+                                updateCounterUI(update.value);
+                                sessionStorage.setItem('hasVisited', 'true');
+                            });
+                    }
+                })
+                .catch(error => {
+                    console.error('访问计数器错误:', error);
+                    // 降级使用本地存储
+                    fallbackToLocalStorage();
+                });
+        }
+
+        // 降级到本地存储
+        function fallbackToLocalStorage() {
+            let visitCount = localStorage.getItem('visitCount');
+
+            if (visitCount === null) {
+                visitCount = 16000; // 初始值
+            } else {
+                visitCount = parseInt(visitCount) + 1;
+            }
+
+            localStorage.setItem('visitCount', visitCount);
+            updateCounterUI(visitCount);
+        }
+
+        // 翻牌式计数器实现
+        function createFlipCounter() {
+            // 查找访问计数器容器
+            const visitorCounterContainer = document.getElementById('visitor-counter');
+            if (!visitorCounterContainer) {
+                console.error('找不到访问计数器容器');
+                return;
+            }
+
+            // 创建计数器容器
+            const counterContainer = document.createElement('div');
+            counterContainer.id = 'flip-counter-container';
+            counterContainer.style.display = 'flex';
+            counterContainer.style.alignItems = 'center';
+            counterContainer.style.gap = '10px';
+
+            // 添加标题
+            const title = document.createElement('div');
+            title.textContent = '浏览网站人数统计';
+            title.style.fontSize = '12px';
+            title.style.fontWeight = 'bold';
+            title.style.color = '#333';
+            counterContainer.appendChild(title);
+
+            // 创建数字翻牌容器
+            const digitsContainer = document.createElement('div');
+            digitsContainer.id = 'digits-container';
+            digitsContainer.style.display = 'flex';
+            digitsContainer.style.gap = '5px';
+            counterContainer.appendChild(digitsContainer);
+
+            // 添加默认的8个数字位（00000000）
+            for (let i = 0; i < 8; i++) {
+                const digitElement = createDigitElement('0');
+                digitsContainer.appendChild(digitElement);
+            }
+
+            // 将计数器添加到指定的容器中
+            visitorCounterContainer.appendChild(counterContainer);
+
+            // 添加翻牌计数器的CSS样式
+            const style = document.createElement('style');
+            style.textContent = `
+                .digit-container {
+                    width: 25px;
+                    height: 40px;
+                    perspective: 800px;
+                    position: relative;
+                }
+
+                .digit-card {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                    transform-style: preserve-3d;
+                    transition: transform 0.6s;
+                }
+
+                .digit-card.flipping {
+                    transform: rotateX(180deg);
+                }
+
+                .digit-front, .digit-back {
+                    width: 100%;
+                    height: 100%;
+                    position: absolute;
+                    backface-visibility: hidden;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: white;
+                    background-color: #ff4500;
+                }
+
+                .digit-back {
+                    transform: rotateX(180deg);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // 创建单个数字翻牌元素
+        function createDigitElement(digit) {
+            const digitContainer = document.createElement('div');
+            digitContainer.className = 'digit-container';
+
+            const digitCard = document.createElement('div');
+            digitCard.className = 'digit-card';
+
+            const digitFront = document.createElement('div');
+            digitFront.className = 'digit-front';
+            digitFront.textContent = digit;
+
+            const digitBack = document.createElement('div');
+            digitBack.className = 'digit-back';
+            digitBack.textContent = digit;
+
+            digitCard.appendChild(digitFront);
+            digitCard.appendChild(digitBack);
+            digitContainer.appendChild(digitCard);
+
+            return digitContainer;
+        }
+
+        // 更新翻牌计数器显示
+        function updateCounterUI(count) {
+            // 确保计数器已创建
+            if (!document.getElementById('flip-counter-container')) {
+                createFlipCounter();
+            }
+
+            // 格式化数字为8位
+            const formattedCount = count.toString().padStart(8, '0');
+            const digitsContainer = document.getElementById('digits-container');
+            if (!digitsContainer) {
+                console.error('找不到数字容器');
+                return;
+            }
+            
+            const digitElements = digitsContainer.querySelectorAll('.digit-container');
+
+            // 更新每个数字位
+            for (let i = 0; i < formattedCount.length; i++) {
+                const currentDigit = formattedCount[i];
+                const digitElement = digitElements[i];
+                if (!digitElement) continue;
+                
+                const digitCard = digitElement.querySelector('.digit-card');
+                const digitFront = digitCard.querySelector('.digit-front');
+                const digitBack = digitCard.querySelector('.digit-back');
+
+                // 如果数字发生变化，触发翻牌动画
+                if (digitFront.textContent !== currentDigit) {
+                    // 设置背面数字
+                    digitBack.textContent = currentDigit;
+                    // 添加翻转类
+                    digitCard.classList.add('flipping');
+
+                    // 动画结束后更新正面数字并移除翻转类
+                    setTimeout(() => {
+                        digitFront.textContent = currentDigit;
+                        digitCard.classList.remove('flipping');
+                    }, 600);
+                }
+            }
         }
         
         // 新增：监听所有参数输入栏的input和select变化，自动触发计算
