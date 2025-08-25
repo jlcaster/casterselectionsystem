@@ -2350,25 +2350,17 @@
       try { window.Site && typeof Site.sendBrowerInfo === 'function' && Site.sendBrowerInfo(false); } catch (e) {}
       try { window.Site && typeof Site.ajaxLogDog === 'function' && Site.ajaxLogDog(200002, 1); } catch (e) {}
 
-      // 动画计数展示：在平台脚本填充后，读取数字 + 基础偏移量，进行动画渲染
+      // 动画计数展示：GitHub Pages 无后端，采用 countapi.xyz 实现云端持久化 + 24h 设备去重
       (function initAnimatedVisitorCounter(){
-        const baseOffset = 16000; // 起始基数
-        const pos = document.getElementById('visitor-counter-pos');
-        if (!pos) return;
+        const BASE_OFFSET = 16000; // 起始基数
+        const POS = document.getElementById('visitor-counter-pos');
+        if (!POS) return;
 
-        // 本设备访问次数持久化（用于无后台或延迟场景的兜底/即时+1反馈）
-        const myKey = 'jl_device_visits';
-        const myVisits = (() => {
-          let n = parseInt(localStorage.getItem(myKey) || '0', 10);
-          n = isNaN(n) ? 0 : n;
-          n += 1; // 本次访问计入
-          localStorage.setItem(myKey, String(n));
-          return n;
-        })();
+        // 你可自定义命名空间/键值（建议与仓库一致，避免冲突）
+        const NAMESPACE = 'jlcaster_casterselectionsystem';
+        const KEY = 'total_visits';
 
-        function format(num){
-          try { return num.toLocaleString('zh-CN'); } catch(_) { return String(num); }
-        }
+        function format(num){ try { return num.toLocaleString('zh-CN'); } catch(_) { return String(num); } }
         function animateCount(el, from, to, duration){
           const start = performance.now();
           const diff = to - from;
@@ -2382,38 +2374,36 @@
           requestAnimationFrame(frame);
         }
 
-        // 当平台脚本把原始累计数写入某处（通常会修改我们预留的位置或其它容器）时，捕获并渲染
-        let lastRendered = 0;
-        function tryRenderFromText(text){
-          const m = String(text || '').replace(/[^0-9]/g, '');
-          if (!m) return false;
-          const raw = parseInt(m, 10);
-          if (isNaN(raw)) return false;
-          // 为了让当前访问立刻体现，加 1 的即时反馈（真正总量仍由平台统计维护）
-          const target = baseOffset + raw + 1;
-          const start = lastRendered || Math.max(0, target - 47); // 平滑起步
-          animateCount(pos, start, target, 900);
-          lastRendered = target;
-          return true;
+        // 每次访问/刷新都 +1（无去重）
+        const LS_CACHE = 'jl_visit_total_cache';
+
+        function writeCache(v){ try { localStorage.setItem(LS_CACHE, String(v)); } catch(_) {} }
+        function readCache(){ try { return parseInt(localStorage.getItem(LS_CACHE)||'0',10)||0; } catch(_) { return 0; } }
+
+        async function callCountApi(path){
+          const url = `https://api.countapi.xyz/${path}/${encodeURIComponent(NAMESPACE)}/${encodeURIComponent(KEY)}`;
+          const resp = await fetch(url, { cache: 'no-store' });
+          if (!resp.ok) throw new Error('HTTP '+resp.status);
+          return resp.json(); // {value:number}
         }
 
-        // 1) 观察自身文本变化
-        const mo = new MutationObserver(() => {
-          if (tryRenderFromText(pos.textContent)) return;
-        });
-        mo.observe(pos, { childList: true, characterData: true, subtree: true });
-
-        // 2) 初始占位与兜底：若迟迟拿不到平台数字，就用设备计数兜底
-        if (!pos.textContent || pos.textContent.trim() === '') {
-          pos.textContent = '统计中…';
-        }
-        setTimeout(() => {
-          if (/统计中/.test(pos.textContent)) {
-            const fallbackTarget = baseOffset + myVisits; // 仅设备内可见兜底
-            animateCount(pos, 0, fallbackTarget, 800);
-            lastRendered = fallbackTarget;
+        async function run(){
+          POS.textContent = '统计中…';
+          try {
+            const data = await callCountApi('hit');
+            const remote = parseInt(data && data.value || 0, 10) || 0; // 从0累计
+            const total = BASE_OFFSET + remote; // 加基数
+            const from = readCache() || Math.max(0, total - 37);
+            animateCount(POS, from, total, 900);
+            writeCache(total);
+          } catch (e) {
+            const fallback = readCache() || BASE_OFFSET;
+            animateCount(POS, fallback, fallback, 200);
+            console.warn('访问计数获取失败，使用缓存/基数兜底：', e);
           }
-        }, 1800);
+        }
+
+        run();
       })();
     </script>
 
