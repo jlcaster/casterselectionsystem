@@ -2361,18 +2361,6 @@
         const KEY = 'total_visits';
 
         function format(num){ try { return num.toLocaleString('zh-CN'); } catch(_) { return String(num); } }
-        function animateCount(el, from, to, duration){
-          const start = performance.now();
-          const diff = to - from;
-          const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
-          function frame(now){
-            const p = Math.min(1, (now - start) / duration);
-            const eased = from + diff * easeOutCubic(p);
-            el.textContent = format(Math.floor(eased));
-            if (p < 1) requestAnimationFrame(frame); else el.textContent = format(to);
-          }
-          requestAnimationFrame(frame);
-        }
 
         // 每次访问/刷新都 +1（无去重）
         const LS_CACHE = 'jl_visit_total_cache';
@@ -2388,17 +2376,18 @@
         }
 
         async function run(){
-          POS.textContent = '统计中…';
+          // 先显示缓存，避免首屏空白
+          const cached = readCache();
+          if (cached > 0) POS.textContent = format(cached); else POS.textContent = '统计中…';
           try {
             const data = await callCountApi('hit');
             const remote = parseInt(data && data.value || 0, 10) || 0; // 从0累计
             const total = BASE_OFFSET + remote; // 加基数
-            const from = readCache() || Math.max(0, total - 37);
-            animateCount(POS, from, total, 900);
+            POS.textContent = format(total);
             writeCache(total);
           } catch (e) {
             const fallback = readCache() || BASE_OFFSET;
-            animateCount(POS, fallback, fallback, 200);
+            POS.textContent = format(fallback);
             console.warn('访问计数获取失败，使用缓存/基数兜底：', e);
           }
         }
