@@ -2356,9 +2356,11 @@
         const POS = document.getElementById('visitor-counter-pos');
         if (!POS) return;
 
-        // 你可自定义命名空间/键值（建议与仓库一致，避免冲突）
-        const NAMESPACE = 'jlcaster_casterselectionsystem';
-        const KEY = 'total_visits';
+        // 动态命名空间/键：基于当前域名与路径，避免与他人冲突
+        const NS_HOST = (location.hostname || 'localhost').replace(/[^a-z0-9]/gi, '_');
+        const NS_REPO = (location.pathname.split('/')[1] || 'root').replace(/[^a-z0-9]/gi, '_');
+        const NAMESPACE = `jl_${NS_HOST}_${NS_REPO}`; // 例如 jl_username_github_io_casterselectionsystem
+        const KEY = `visits_${(location.pathname || '/').replace(/[^a-z0-9]/gi, '_') || 'index_html'}`;
 
         function format(num){ try { return num.toLocaleString('zh-CN'); } catch(_) { return String(num); } }
 
@@ -2370,7 +2372,10 @@
 
         async function callCountApi(path){
           const url = `https://api.countapi.xyz/${path}/${encodeURIComponent(NAMESPACE)}/${encodeURIComponent(KEY)}`;
-          const resp = await fetch(url, { cache: 'no-store' });
+          const controller = new AbortController();
+          const t = setTimeout(() => controller.abort(), 6000);
+          const resp = await fetch(url, { cache: 'no-store', signal: controller.signal });
+          clearTimeout(t);
           if (!resp.ok) throw new Error('HTTP '+resp.status);
           return resp.json(); // {value:number}
         }
@@ -2380,8 +2385,14 @@
           const cached = readCache();
           if (cached > 0) POS.textContent = format(cached); else POS.textContent = '统计中…';
           try {
-            const data = await callCountApi('hit');
-            const remote = parseInt(data && data.value || 0, 10) || 0; // 从0累计
+            let data;
+            try {
+              data = await callCountApi('hit'); // 常规递增
+            } catch(e1) {
+              console.warn('hit 失败，尝试 get：', e1);
+              data = await callCountApi('get'); // 若命名空间或网络暂时问题，至少拉取现值
+            }
+            const remote = parseInt(data && data.value || 0, 10) || 0; // 从0累计（第三方返回）
             const total = BASE_OFFSET + remote; // 加基数
             POS.textContent = format(total);
             writeCache(total);
@@ -2389,6 +2400,7 @@
             const fallback = readCache() || BASE_OFFSET;
             POS.textContent = format(fallback);
             console.warn('访问计数获取失败，使用缓存/基数兜底：', e);
+            console.warn('如一直为16000，说明第三方计数服务无法访问，请检查网络或更换命名空间/服务。');
           }
         }
 
