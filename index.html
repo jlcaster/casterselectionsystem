@@ -859,7 +859,7 @@
             width: 200%; /* 更大，铺满整个推荐区域对角线 */
             height: 90%;
             transform: translate(-50%, -50%) rotate(-60deg);
-            background: url('./images/logo-watermark.png') center center no-repeat;
+            background: url('./logo-watermark.png') center center no-repeat;
             background-size: contain;
             opacity: 0.05;
             pointer-events: none;
@@ -870,7 +870,7 @@
 <body>
     <!-- 斜向水印logo，覆盖页面但不影响观感 -->
     <div style="pointer-events:none;user-select:none;position:fixed;z-index:0;top:0;left:0;width:100vw;height:100vh;overflow:hidden;">
-      <img src="./images/logo-watermark.png" alt="JIANGLONG LOGO 水印" style="
+      <img src="./logo-watermark.png" alt="JIANGLONG LOGO 水印" style="
         position:absolute;
         top:10vh;
         left:-10vw;
@@ -885,7 +885,7 @@
         <header>
             <div class="header-top">
                 <div class="logo">
-                        <img src="./images/company-logo.png" alt="江龙脚轮" style="width:100px;height:100px;">
+                        <img src="./company-logo.png" alt="江龙脚轮" style="width:100px;height:100px;">
                     <div class="logo-text">
                         <h1>江龙脚轮选型系统</h1>
                         <p>FABE话术生成器 - 专业脚轮解决方案</p>
@@ -1145,29 +1145,29 @@
         
         // 支架系列数据（包含图片URL）
         const bracketSeries = [
-            { series: "K91", loadRange: [10000, Infinity], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/K91.jpg" },
-            { series: "K90", loadRange: [3000, 10000], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/K90.jpg" },
-            { series: "R90", loadRange: [3000, 10000], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/R90.jpg" },
-            { series: "K88", loadRange: [2000, 5000], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/K88.jpg" },
-            { series: "R88", loadRange: [2000, 5000], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/R88.jpg" },
-            { series: "K80", loadRange: [1000, 3300], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/K80.jpg" },
-            { series: "R80", loadRange: [1000, 3300], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/R80.jpg" },
-            { series: "81", loadRange: [600, 1800], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/81.jpg" },
-            { series: "80", loadRange: [600, 1800], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/80.jpg" },
-            { series: "69", loadRange: [450, 800], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/69.jpg" },
-            { series: "68", loadRange: [450, 800], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/68.jpg" },
-            { series: "K63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/K63.jpg" },
-            { series: "R63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/R63.jpg" },
-            { series: "N63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/N63.jpg" },
-            { series: "51", loadRange: [25, 135], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/51.jpg" },
-            { series: "56", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/56.jpg" },
-            { series: "46", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/46.jpg" },
-            { series: "42", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/42.jpg" },
-            { series: "33", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/33.jpg" },
-            { series: "30", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/30.jpg" },
-            { series: "N63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/N63.jpg" },
-            { series: "K63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/K63.jpg" },
-            { series: "63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/63.jpg" }
+            { series: "K91", loadRange: [10000, Infinity], desc: "超重型工业脚轮支架", imageUrl: "./K91.jpg" },
+            { series: "K90", loadRange: [3000, 10000], desc: "超重型工业脚轮支架", imageUrl: "./K90.jpg" },
+            { series: "R90", loadRange: [3000, 10000], desc: "超重型工业脚轮支架", imageUrl: "./R90.jpg" },
+            { series: "K88", loadRange: [2000, 5000], desc: "超重型工业脚轮支架", imageUrl: "./K88.jpg" },
+            { series: "R88", loadRange: [2000, 5000], desc: "超重型工业脚轮支架", imageUrl: "./R88.jpg" },
+            { series: "K80", loadRange: [1000, 3300], desc: "超重型工业脚轮支架", imageUrl: "./K80.jpg" },
+            { series: "R80", loadRange: [1000, 3300], desc: "超重型工业脚轮支架", imageUrl: "./R80.jpg" },
+            { series: "81", loadRange: [600, 1800], desc: "超重型工业脚轮支架", imageUrl: "./81.jpg" },
+            { series: "80", loadRange: [600, 1800], desc: "超重型工业脚轮支架", imageUrl: "./80.jpg" },
+            { series: "69", loadRange: [450, 800], desc: "重型工业脚轮支架", imageUrl: "./69.jpg" },
+            { series: "68", loadRange: [450, 800], desc: "重型工业脚轮支架", imageUrl: "./68.jpg" },
+            { series: "K63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./K63.jpg" },
+            { series: "R63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./R63.jpg" },
+            { series: "N63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./N63.jpg" },
+            { series: "51", loadRange: [25, 135], desc: "重型工业脚轮支架", imageUrl: "./51.jpg" },
+            { series: "56", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./56.jpg" },
+            { series: "46", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./46.jpg" },
+            { series: "42", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./42.jpg" },
+            { series: "33", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./33.jpg" },
+            { series: "30", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./30.jpg" },
+            { series: "N63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./N63.jpg" },
+            { series: "K63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./K63.jpg" },
+            { series: "63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./63.jpg" }
         ];
         
         // 材质数据（包含详细的属性信息）
@@ -1842,7 +1842,7 @@
         
         // 生成推荐方案
         function generateRecommendations(baseLoad, heightReq, applicationScenario, environment) {
-            const logoUrl = './images/logo-watermark.png';
+            const logoUrl = './logo-watermark.png';
             // 3D模型链接映射表
             const bracket3DLinks = {
                 '30': 'https://3d.casterpartner.com/model/show_299.html',
@@ -2127,7 +2127,7 @@
                 img.style.filter = '';
             });
             // 2. 额外添加3个大水印logo（如原逻辑）
-            const logoUrl = './images/logo-watermark.png';
+            const logoUrl = './logo-watermark.png';
             const watermarks = [];
             const sectionRect = resultSection.getBoundingClientRect();
             const logoWidth = sectionRect.width * 0.32;
@@ -2194,7 +2194,7 @@
             schemeElements.forEach((scheme, index) => {
                 const title = scheme.querySelector('h3').textContent;
                 const totalHeight = scheme.querySelector('li:nth-child(5)').textContent;
-                const loadCapacity = scheme.querySelector('li:nth-child(4)').textContent;
+                const loadCapacity = scheme.querySelector('ul li:nth-child(2)')?.textContent || '';
                 const heightDiff = scheme.querySelector('.height-match, .height-warning')?.textContent || '';
                 const keyBenefits = Array.from(scheme.querySelectorAll('.benefit-item div'))
                     .slice(0, 3)
@@ -2296,7 +2296,7 @@
         }
 
         // 3. 更新logo图片链接
-        const logoUrl = './images/logo-watermark.png';
+        const logoUrl = './logo-watermark.png';
         document.querySelectorAll('img[alt="logo水印"]').forEach(img => {
             img.src = logoUrl;
             img.onerror = function() {
