@@ -1,5 +1,7 @@
+
 <!DOCTYPE html><html lang="zh-CN"><heac:\Users\36749\caster-site\index.htmld>
     <meta charset="UTF-8">
+    <script id="faiHawkEyeScript" charset="utf-8" type="text/javascript" src="https://fe.faisco.cn/hawkEye/outerChain.jsp?appid=16008&aid=11112263&bsAid=11112263&bsId=0&bsWid=0&isOem=true&webName=mallsite"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>江龙脚轮选型系统 - FABE话术生成器</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -358,12 +360,41 @@
         }
         
         .footer {
-            text-align: center;
             padding: 20px;
             color: #4a5568;
             font-size: 0.9rem;
             background: #f8fafc;
             border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .visitor-counter {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+        
+        .company-info {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        
+        .company-info p {
+            margin: 2px 0;
         }
         
         .hidden {
@@ -828,7 +859,7 @@
             width: 200%; /* 更大，铺满整个推荐区域对角线 */
             height: 90%;
             transform: translate(-50%, -50%) rotate(-60deg);
-            background: url('https://pic1.imgdb.cn/item/687f46bb58cb8da5c8cb2189.png') center center no-repeat;
+            background: url('./images/logo-watermark.png') center center no-repeat;
             background-size: contain;
             opacity: 0.05;
             pointer-events: none;
@@ -839,7 +870,7 @@
 <body>
     <!-- 斜向水印logo，覆盖页面但不影响观感 -->
     <div style="pointer-events:none;user-select:none;position:fixed;z-index:0;top:0;left:0;width:100vw;height:100vh;overflow:hidden;">
-      <img src="https://pic1.imgdb.cn/item/687f46bb58cb8da5c8cb2189.png" alt="JIANGLONG LOGO 水印" style="
+      <img src="./images/logo-watermark.png" alt="JIANGLONG LOGO 水印" style="
         position:absolute;
         top:10vh;
         left:-10vw;
@@ -854,7 +885,7 @@
         <header>
             <div class="header-top">
                 <div class="logo">
-                        <img src="https://pic1.imgdb.cn/item/6880ad5c58cb8da5c8d04480.png" alt="江龙脚轮" style="width:100px;height:100px;">
+                        <img src="./images/company-logo.png" alt="江龙脚轮" style="width:100px;height:100px;">
                     <div class="logo-text">
                         <h1>江龙脚轮选型系统</h1>
                         <p>FABE话术生成器 - 专业脚轮解决方案</p>
@@ -862,36 +893,7 @@
                 </div>
                 <div class="datetime-weather">
                     <div id="current-date">2025年7月11日 星期五</div>
-                    <div id="weather">阳江天气: <span id="weather-info">加载中...</span></div>
-                    <script>
-                        // 天气数据处理回调函数
-                        function handleWeatherData(data) {
-                            if (data && data.code === 200) {
-                                const weatherInfo = data.data.realtime;
-                                const temp = weatherInfo.temp + '℃';
-                                const weather = weatherInfo.weather;
-                                const wind = `${weatherInfo.windDir} ${weatherInfo.windPower}级`;
-                                document.getElementById('weather-info').textContent = `${weather} ${temp} ${wind}`;
-                            } else {
-                                document.getElementById('weather-info').textContent = '获取失败';
-                            }
-                        }
-                        
-                        // 动态加载天气数据（使用JSONP解决跨域问题）
-                        function loadWeatherData() {
-                            const script = document.createElement('script');
-                            // 使用支持JSONP的天气接口，阳江市城市代码101281801
-                            const timestamp = new Date().getTime();
-                            script.src = `https://api.seniverse.com/v3/weather/now.json?key=S8pL3U4fLxpvH2qQV&location=yangjiang&language=zh-Hans&unit=c&callback=handleWeatherData&_=${timestamp}`;
-                            script.onerror = function() {
-                                document.getElementById('weather-info').textContent = '加载失败';
-                            };
-                            document.head.appendChild(script);
-                        }
-                        
-                        // 页面加载完成后获取天气数据
-                        window.addEventListener('load', loadWeatherData);
-                    </script>
+                    <div id="weather">阳江天气: 晴 24℃</div>
                 </div>
             </div>
         </header>
@@ -1067,8 +1069,15 @@
         </div>
         
         <div class="footer">
-            <p>© 2025 阳江市江龙精密脚轮有限公司 | 专业脚轮解决方案提供商</p>
-            <p>ISO 9001:2015 质量认证企业 | 100+项技术专利 | 服务全球3000+客户</p>
+            <div class="footer-content">
+                <div class="visitor-counter" id="visitor-counter">
+                    <!-- 访问计数器将在这里动态生成 -->
+                </div>
+                <div class="company-info">
+                    <p>© 2025 阳江市江龙精密脚轮有限公司 | 专业脚轮解决方案提供商</p>
+                    <p>ISO 9001:2015 质量认证企业 | 100+项技术专利 | 服务全球3000+客户</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1136,29 +1145,29 @@
         
         // 支架系列数据（包含图片URL）
         const bracketSeries = [
-            { series: "K91", loadRange: [10000, Infinity], desc: "超重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/687860aa58cb8da5c8bc4ee7.jpg" },
-            { series: "K90", loadRange: [3000, 10000], desc: "超重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/687860a058cb8da5c8bc4e81.jpg" },
-            { series: "R90", loadRange: [3000, 10000], desc: "超重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/687860c958cb8da5c8bc506b.jpg" },
-            { series: "K88", loadRange: [2000, 5000], desc: "超重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878609858cb8da5c8bc4e2b.jpg" },
-            { series: "R88", loadRange: [2000, 5000], desc: "超重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878609858cb8da5c8bc4e2b.jpg" },
-            { series: "K80", loadRange: [1000, 3300], desc: "超重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878608d58cb8da5c8bc4daa.jpg" },
-            { series: "R80", loadRange: [1000, 3300], desc: "超重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878608d58cb8da5c8bc4daa.jpg" },
-            { series: "81", loadRange: [600, 1800], desc: "超重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878607858cb8da5c8bc4cb3.jpg" },
-            { series: "80", loadRange: [600, 1800], desc: "超重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878606f58cb8da5c8bc4c73.jpg" },
-            { series: "69", loadRange: [450, 800], desc: "重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878606758cb8da5c8bc4c26.jpg" },
-            { series: "68", loadRange: [450, 800], desc: "重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878605e58cb8da5c8bc4bc3.jpg" },
-            { series: "K63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878608558cb8da5c8bc4d45.jpg" },
-            { series: "R63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/687860bc58cb8da5c8bc4fc2.jpg" },
-            { series: "N63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/687860b658cb8da5c8bc4f63.jpg" },
-            { series: "51", loadRange: [25, 135], desc: "重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878604558cb8da5c8bc4aed.jpg" },
-            { series: "56", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878605558cb8da5c8bc4b7b.jpg" },
-            { series: "46", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878603c58cb8da5c8bc4ab9.jpg" },
-            { series: "42", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878602c58cb8da5c8bc4a31.jpg" },
-            { series: "33", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878601858cb8da5c8bc498d.jpg" },
-            { series: "30", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878600858cb8da5c8bc4907.jpg" },
-            { series: "N63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/687860b658cb8da5c8bc4f63.jpg" },
-            { series: "K63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/6878608558cb8da5c8bc4d45.jpg" },
-            { series: "63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "https://pic1.imgdb.cn/item/687b65f558cb8da5c8c712c4.jpg" }
+            { series: "K91", loadRange: [10000, Infinity], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/K91.jpg" },
+            { series: "K90", loadRange: [3000, 10000], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/K90.jpg" },
+            { series: "R90", loadRange: [3000, 10000], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/R90.jpg" },
+            { series: "K88", loadRange: [2000, 5000], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/K88.jpg" },
+            { series: "R88", loadRange: [2000, 5000], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/R88.jpg" },
+            { series: "K80", loadRange: [1000, 3300], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/K80.jpg" },
+            { series: "R80", loadRange: [1000, 3300], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/R80.jpg" },
+            { series: "81", loadRange: [600, 1800], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/81.jpg" },
+            { series: "80", loadRange: [600, 1800], desc: "超重型工业脚轮支架", imageUrl: "./images/brackets/80.jpg" },
+            { series: "69", loadRange: [450, 800], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/69.jpg" },
+            { series: "68", loadRange: [450, 800], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/68.jpg" },
+            { series: "K63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/K63.jpg" },
+            { series: "R63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/R63.jpg" },
+            { series: "N63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/N63.jpg" },
+            { series: "51", loadRange: [25, 135], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/51.jpg" },
+            { series: "56", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/56.jpg" },
+            { series: "46", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/46.jpg" },
+            { series: "42", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/42.jpg" },
+            { series: "33", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/33.jpg" },
+            { series: "30", loadRange: [25, 135], desc: "中重型商用脚轮支架", imageUrl: "./images/brackets/30.jpg" },
+            { series: "N63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/N63.jpg" },
+            { series: "K63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/K63.jpg" },
+            { series: "63", loadRange: [100, 550], desc: "重型工业脚轮支架", imageUrl: "./images/brackets/63.jpg" }
         ];
         
         // 材质数据（包含详细的属性信息）
@@ -1833,7 +1842,7 @@
         
         // 生成推荐方案
         function generateRecommendations(baseLoad, heightReq, applicationScenario, environment) {
-            const logoUrl = 'https://pic1.imgdb.cn/item/687f46bb58cb8da5c8cb2189.png';
+            const logoUrl = './images/logo-watermark.png';
             // 3D模型链接映射表
             const bracket3DLinks = {
                 '30': 'https://3d.casterpartner.com/model/show_299.html',
@@ -2118,7 +2127,7 @@
                 img.style.filter = '';
             });
             // 2. 额外添加3个大水印logo（如原逻辑）
-            const logoUrl = 'https://pic1.imgdb.cn/item/687f46bb58cb8da5c8cb2189.png';
+            const logoUrl = './images/logo-watermark.png';
             const watermarks = [];
             const sectionRect = resultSection.getBoundingClientRect();
             const logoWidth = sectionRect.width * 0.32;
@@ -2219,6 +2228,7 @@
         
         // 确保DOM加载完成后执行初始计算
         document.addEventListener('DOMContentLoaded', function() {
+            setupImageErrorHandlers();
             setTimeout(() => {
                 const calculateBtn = document.getElementById('calculate-btn');
                 if (calculateBtn) {
@@ -2235,12 +2245,65 @@
             document.getElementById('calculate-btn').click();
         });
         
+        // 为所有外部图片添加错误处理
+        function setupImageErrorHandlers() {
+            // 替换为caster-site版本的图片处理逻辑
+            // 1. 更新bracketSeries中的图片链接为free.picui.cn格式
+            bracketSeries.forEach(series => {
+                // 已手动更新所有链接，保留此代码仅用于处理旧的superbed链接
+                if (series.imageUrl && series.imageUrl.includes('free.superbed.cn')) {
+                    // 提取文件名
+                    const fileName = series.imageUrl.split('/').pop();
+                    // 生成新的free.picui.cn链接
+                    series.imageUrl = `https://free.picui.cn/free/2025/08/20/${fileName}`;
+                }
+                // 处理imageHtml属性
+                if (series.imageHtml) {
+                    // 替换为free.picui.cn链接
+                    series.imageHtml = series.imageHtml.replace(/src="https:\/\/free\.superbed\.cn\/store\/images\//g, 'src="https://free.picui.cn/free/2025/08/20/');
+                    // 添加onerror属性
+                    series.imageHtml = series.imageHtml.replace(/<img/g, '<img onerror="handleImageError(this)"');
+                }
+            });
+        }
+
         // 图片错误处理函数
         function handleImageError(img, fallbackSrc) {
             console.error(`图片加载失败: ${img.src}`);
             img.onerror = null; // 防止无限循环
-            img.src = fallbackSrc;
+
+            // 如果图片还没有尝试过重试，则进行重试
+            if (!img.dataset.retryAttempted) {
+                img.dataset.retryAttempted = 'true';
+                
+                // 添加时间戳避免缓存问题
+                const separator = img.src.includes('?') ? '&' : '?';
+                const retrySrc = `${img.src}${separator}t=${Date.now()}`;
+                console.log(`尝试重新加载图片: ${retrySrc}`);
+                
+                img.src = retrySrc;
+                img.onerror = function() {
+                    console.error(`重试后图片仍加载失败: ${retrySrc}`);
+                    // 最终失败，显示默认图片
+                    img.src = fallbackSrc || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22180%22%20height%3D%22120%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22180%22%20height%3D%22120%22%20fill%3D%22%23f0f0f0%22%2F%3E%3Ctext%20x%3D%2290%22%20y%3D%2260%22%20text-anchor%3D%22middle%22%20fill%3D%22%23999%22%20font-family%3D%22Arial%22%20font-size%3D%2212%22%3E图片加载失败%3C%2Ftext%3E%3C%2Fsvg%3E';
+                    img.style.border = '1px solid #ddd';
+                };
+            } else {
+                // 已经重试过，显示默认图片
+                img.src = fallbackSrc || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22180%22%20height%3D%22120%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22180%22%20height%3D%22120%22%20fill%3D%22%23f0f0f0%22%2F%3E%3Ctext%20x%3D%2290%22%20y%3D%2260%22%20text-anchor%3D%22middle%22%20fill%3D%22%23999%22%20font-family%3D%22Arial%22%20font-size%3D%2212%22%3E图片加载失败%3C%2Ftext%3E%3C%2Fsvg%3E';
+                img.style.border = '1px solid #ddd';
+            }
         }
+
+        // 3. 更新logo图片链接
+        const logoUrl = './images/logo-watermark.png';
+        document.querySelectorAll('img[alt="logo水印"]').forEach(img => {
+            img.src = logoUrl;
+            img.onerror = function() {
+                handleImageError(this);
+            };
+        });
+
         
         // 新增：监听所有参数输入栏的input和select变化，自动触发计算
         document.querySelectorAll('.input-section input, .input-section select').forEach(el => {
@@ -2265,4 +2328,33 @@
         }
     </script>
 
-</body></html>
+</body>
+
+<!-- 计数器容器（预留，自 jsq.html 要求） -->
+<div id="page-visit-counter" style="display:none"></div>
+
+<!-- 照抄 jsq.html 页面统计脚本（安全调用） -->
+<script id="faiHawkEyeScript" charset="utf-8" type="text/javascript" src="https://fe.faisco.cn/hawkEye/outerChain.jsp?appid=16008&aid=11112263&bsAid=11112263&bsId=0&bsWid=0&isOem=true&webName=mallsite"></script>
+<script>
+(function() {
+  try {
+    if (window.Site && typeof Site.total === 'function') {
+      Site.total({ colId: 12, pdId: -1, ndId: -1, sc: 0, statId: (typeof statId !== 'undefined' ? statId : -1) });
+    }
+  } catch (e) {}
+
+  try {
+    if (window.Site && typeof Site.sendBrowerInfo === 'function') {
+      Site.sendBrowerInfo(false);
+    }
+  } catch (e) {}
+
+  try {
+    if (window.Site && typeof Site.printBaiduPushJs === 'function') {
+      Site.printBaiduPushJs();
+    }
+  } catch (e) {}
+})();
+</script>
+
+</html>
