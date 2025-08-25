@@ -1070,10 +1070,11 @@
         
         <div class="footer">
             <div class="footer-content">
-                <div class="visitor-counter" id="visitor-counter">
-                    <!-- 访问计数器将在这里动态生成 -->
+                <div class="visitor-counter visitorCounterWrap" id="visitor-counter" style="display:flex;gap:8px;align-items:center;">
+                    <span style="color:#2b6cb0;font-weight:600;white-space:nowrap;">访问量</span>
+                    <div class='visitorCounterPosition' id="visitor-counter-pos" style="min-width:72px;text-align:left;color:#2b6cb0;font-weight:700;"></div>
                 </div>
-                <div class="company-info">
+                <div class="company-info" style="display:flex;flex-direction:column;gap:2px;">
                     <p>© 2025 阳江市江龙精密脚轮有限公司 | 专业脚轮解决方案提供商</p>
                     <p>ISO 9001:2015 质量认证企业 | 100+项技术专利 | 服务全球3000+客户</p>
                 </div>
@@ -2326,6 +2327,94 @@
         function getWheelHeight(diameter) {
             return `${Math.round(diameter * 1.4)} mm`;
         }
+    </script>
+
+    <!-- 访问计数：依赖脚本与全局参数 -->
+    <script type="text/javascript" src="//1ms.508mallsys.com/js/dist/frontend.min.js"></script>
+    <script type="text/javascript" src="//1ms.508mallsys.com/js/dist/monitor.min.js"></script>
+    <script>
+      // 最小化全局配置（与 jsq.html 保持一致字段名）
+      window._aid = 11112263; // 站点标识
+      window._siteDomain = '//www.jianglongcaster.com';
+      window.statId = (typeof window.statId !== 'undefined') ? window.statId : -1;
+      // 目标页面栏目ID（如需按页维度细分可替换此值），产品详情可把 pdId 改成实际产品ID
+      const pageColId = 12;
+
+      // 调用原有统计与日志
+      try {
+        if (window.Site && typeof Site.total === 'function') {
+          Site.total({ colId: pageColId, pdId: -1, ndId: -1, sc: 0, statId: (typeof statId !== 'undefined' ? statId : -1) });
+        }
+      } catch (e) { console.warn('Site.total 调用失败', e); }
+
+      try { window.Site && typeof Site.sendBrowerInfo === 'function' && Site.sendBrowerInfo(false); } catch (e) {}
+      try { window.Site && typeof Site.ajaxLogDog === 'function' && Site.ajaxLogDog(200002, 1); } catch (e) {}
+
+      // 动画计数展示：在平台脚本填充后，读取数字 + 基础偏移量，进行动画渲染
+      (function initAnimatedVisitorCounter(){
+        const baseOffset = 16000; // 起始基数
+        const pos = document.getElementById('visitor-counter-pos');
+        if (!pos) return;
+
+        // 本设备访问次数持久化（用于无后台或延迟场景的兜底/即时+1反馈）
+        const myKey = 'jl_device_visits';
+        const myVisits = (() => {
+          let n = parseInt(localStorage.getItem(myKey) || '0', 10);
+          n = isNaN(n) ? 0 : n;
+          n += 1; // 本次访问计入
+          localStorage.setItem(myKey, String(n));
+          return n;
+        })();
+
+        function format(num){
+          try { return num.toLocaleString('zh-CN'); } catch(_) { return String(num); }
+        }
+        function animateCount(el, from, to, duration){
+          const start = performance.now();
+          const diff = to - from;
+          const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+          function frame(now){
+            const p = Math.min(1, (now - start) / duration);
+            const eased = from + diff * easeOutCubic(p);
+            el.textContent = format(Math.floor(eased));
+            if (p < 1) requestAnimationFrame(frame); else el.textContent = format(to);
+          }
+          requestAnimationFrame(frame);
+        }
+
+        // 当平台脚本把原始累计数写入某处（通常会修改我们预留的位置或其它容器）时，捕获并渲染
+        let lastRendered = 0;
+        function tryRenderFromText(text){
+          const m = String(text || '').replace(/[^0-9]/g, '');
+          if (!m) return false;
+          const raw = parseInt(m, 10);
+          if (isNaN(raw)) return false;
+          // 为了让当前访问立刻体现，加 1 的即时反馈（真正总量仍由平台统计维护）
+          const target = baseOffset + raw + 1;
+          const start = lastRendered || Math.max(0, target - 47); // 平滑起步
+          animateCount(pos, start, target, 900);
+          lastRendered = target;
+          return true;
+        }
+
+        // 1) 观察自身文本变化
+        const mo = new MutationObserver(() => {
+          if (tryRenderFromText(pos.textContent)) return;
+        });
+        mo.observe(pos, { childList: true, characterData: true, subtree: true });
+
+        // 2) 初始占位与兜底：若迟迟拿不到平台数字，就用设备计数兜底
+        if (!pos.textContent || pos.textContent.trim() === '') {
+          pos.textContent = '统计中…';
+        }
+        setTimeout(() => {
+          if (/统计中/.test(pos.textContent)) {
+            const fallbackTarget = baseOffset + myVisits; // 仅设备内可见兜底
+            animateCount(pos, 0, fallbackTarget, 800);
+            lastRendered = fallbackTarget;
+          }
+        }, 1800);
+      })();
     </script>
 
 </body>
