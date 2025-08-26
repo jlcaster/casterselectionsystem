@@ -2351,50 +2351,50 @@
       try { window.Site && typeof Site.sendBrowerInfo === 'function' && Site.sendBrowerInfo(false); } catch (e) {}
       try { window.Site && typeof Site.ajaxLogDog === 'function' && Site.ajaxLogDog(200002, 1); } catch (e) {}
 
-      // 跨浏览器设备访问统计系统：基于设备指纹和云端存储实现
-      (function initCrossBrowserVisitorCounter(){
+      // 全局统一访问统计系统：实现跨浏览器、跨设备的访问次数累加
+      (function initGlobalVisitorCounter(){
         const BASE_OFFSET = 16000; // 起始基数
         const POS = document.getElementById('visitor-counter-pos');
         if (!POS) return;
 
-        // 访问统计系统配置
+        // 全局访问统计系统配置
         const VISITOR_CONFIG = {
-          // 动态生成命名空间，避免冲突
-          getNamespace: function() {
-            const host = (location.hostname || 'localhost').replace(/[^a-z0-9]/gi, '_');
-            const path = (location.pathname || '/').replace(/[^a-z0-9]/gi, '_');
-            return `jl_${host}_${path}`;
-          },
+          // 固定命名空间，确保全局统一
+          NAMESPACE: 'jianglong_global_visitor_counter',
           
           // 计数器键名
-          COUNTER_KEY: 'total_visits',
-          TODAY_KEY: 'today_visits',
-          DEVICES_KEY: 'unique_devices',
+          GLOBAL_TOTAL_KEY: 'global_total_visits', // 全局总访问次数
           DEVICE_VISITS_KEY: 'device_visits', // 设备访问次数
+          UNIQUE_DEVICES_KEY: 'unique_devices', // 独立设备数量
+          TODAY_VISITS_KEY: 'today_visits', // 今日访问次数
           
           // API配置
           API_BASE: 'https://api.countapi.xyz',
-          TIMEOUT: 5000, // 减少超时时间
-          RETRY_TIMES: 2, // 减少重试次数
-          RETRY_DELAY: 500 // 减少重试延迟
+          TIMEOUT: 8000, // 增加超时时间，确保稳定性
+          RETRY_TIMES: 3, // 增加重试次数
+          RETRY_DELAY: 1000 // 增加重试延迟
         };
 
-        // 访问统计核心类
-        class VisitorCounter {
+        // 全局访问统计核心类
+        class GlobalVisitorCounter {
           constructor() {
-            this.namespace = VISITOR_CONFIG.getNamespace();
+            this.namespace = VISITOR_CONFIG.NAMESPACE;
             this.isInitialized = false;
             this.cache = new Map();
             this.counterElement = POS;
             this.networkAvailable = true; // 网络状态标记
             this.deviceId = null; // 设备唯一ID
+            this.sessionId = null; // 会话ID（防止重复计数）
             this.init();
           }
           
-          // 初始化
+          // 初始化全局访问统计
           async init() {
             try {
-              console.log('正在初始化跨浏览器设备访问统计系统...');
+              console.log('正在初始化全局统一访问统计系统...');
+              
+              // 生成会话ID，防止重复计数
+              this.sessionId = this.generateSessionId();
               
               // 先显示缓存数据，避免空白
               this.displayCachedData();
@@ -2405,10 +2405,10 @@
               // 检查网络连接
               await this.checkNetworkStatus();
               
-              // 如果网络可用，尝试记录访问
+              // 记录本次访问并更新全局统计
               if (this.networkAvailable) {
-                await this.recordVisit();
-                await this.updateDisplay();
+                await this.recordGlobalVisit();
+                await this.updateGlobalDisplay();
               } else {
                 console.log('网络不可用，使用本地统计模式');
                 this.useLocalCounter();
@@ -2418,7 +2418,7 @@
               this.setupAutoUpdate();
               
               this.isInitialized = true;
-              console.log('跨浏览器设备访问统计系统已就绪');
+              console.log('全局统一访问统计系统已就绪');
               
             } catch (error) {
               console.error('初始化失败:', error);
@@ -2426,13 +2426,19 @@
             }
           }
           
+          // 生成会话ID
+          generateSessionId() {
+            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          }
+          
           // 检查网络状态
           async checkNetworkStatus() {
             try {
-              // 尝试连接一个简单的API端点
-              const testUrl = `${VISITOR_CONFIG.API_BASE}/get/${this.namespace}/test`;
-              const response = await this.fetchWithTimeout(testUrl, { timeout: 3000 });
+              // 尝试连接全局计数器API
+              const testUrl = `${VISITOR_CONFIG.API_BASE}/get/${this.namespace}/${VISITOR_CONFIG.GLOBAL_TOTAL_KEY}`;
+              const response = await this.fetchWithTimeout(testUrl, { timeout: 5000 });
               this.networkAvailable = response.ok;
+              console.log('网络连接正常，使用云端统计模式');
             } catch (error) {
               console.warn('网络连接检查失败，切换到本地模式:', error);
               this.networkAvailable = false;
@@ -2444,6 +2450,15 @@
             const deviceId = this.getDeviceId();
             const today = new Date().toISOString().split('T')[0];
             const todayKey = `local_${today}`;
+            
+            // 检查是否已经记录过本次会话
+            const sessionKey = `local_session_${this.sessionId}`;
+            const sessionRecorded = localStorage.getItem(sessionKey);
+            
+            if (sessionRecorded) {
+              console.log('本次会话已记录，跳过重复计数');
+              return;
+            }
             
             // 增加本地总访问计数
             let localCount = parseInt(localStorage.getItem('jl_local_visits') || '0', 10);
@@ -2465,16 +2480,19 @@
             const deviceTimeKey = `local_device_time_${deviceId}`;
             localStorage.setItem(deviceTimeKey, Date.now().toString());
             
+            // 标记本次会话已记录
+            localStorage.setItem(sessionKey, '1');
+            
             // 更新显示
             const displayValue = BASE_OFFSET + localCount;
             this.updateCounterDisplay(displayValue);
             this.writeCache(displayValue);
             
-            console.log(`本地访问统计已更新，设备 ${deviceId} 访问次数: ${deviceVisits}`);
+            console.log(`本地访问统计已更新，设备 ${deviceId} 累计访问次数: ${deviceVisits}`);
           }
           
-          // 记录访问（跨浏览器设备统计）
-          async recordVisit() {
+          // 记录全局访问（跨浏览器、跨设备统计）
+          async recordGlobalVisit() {
             if (!this.networkAvailable) {
               this.useLocalCounter();
               return;
@@ -2484,19 +2502,34 @@
             const timestamp = Date.now();
             
             try {
-              // 增加总访问次数
-              await this.incrementCounter(VISITOR_CONFIG.COUNTER_KEY);
+              // 检查是否已经记录过本次会话
+              const sessionKey = `session_${this.sessionId}`;
+              const sessionRecorded = await this.getCounter(sessionKey);
               
-              // 记录设备访问（跨浏览器累加）
+              if (sessionRecorded > 0) {
+                console.log('本次会话已记录，跳过重复计数');
+                return;
+              }
+              
+              // 1. 增加全局总访问次数
+              await this.incrementCounter(VISITOR_CONFIG.GLOBAL_TOTAL_KEY);
+              
+              // 2. 记录设备访问次数
               await this.recordDeviceVisit(deviceId, timestamp);
               
-              // 更新今日访问
-              await this.updateDailyStats();
+              // 3. 更新独立设备数量
+              await this.updateUniqueDevices(deviceId);
               
-              console.log('跨浏览器访问记录成功，设备ID:', deviceId);
+              // 4. 更新今日访问次数
+              await this.updateTodayVisits();
+              
+              // 5. 标记本次会话已记录
+              await this.setCounter(sessionKey, 1);
+              
+              console.log('全局访问记录成功，设备ID:', deviceId);
               
             } catch (error) {
-              console.error('记录访问失败，切换到本地模式:', error);
+              console.error('记录全局访问失败，切换到本地模式:', error);
               this.networkAvailable = false;
               this.useLocalCounter();
             }
@@ -2522,10 +2555,39 @@
               const deviceTimeKey = `device_time_${deviceId}`;
               await this.setCounter(deviceTimeKey, timestamp);
               
-              console.log(`设备 ${deviceId} 访问次数: ${deviceVisits}`);
+              console.log(`设备 ${deviceId} 累计访问次数: ${deviceVisits}`);
               
             } catch (error) {
               console.error('记录设备访问失败:', error);
+            }
+          }
+          
+          // 更新独立设备数量
+          async updateUniqueDevices(deviceId) {
+            try {
+              // 检查设备是否已记录
+              const deviceRecordKey = `device_record_${deviceId}`;
+              const deviceRecorded = await this.getCounter(deviceRecordKey);
+              
+              if (!deviceRecorded) {
+                // 新设备，增加独立设备计数
+                await this.incrementCounter(VISITOR_CONFIG.UNIQUE_DEVICES_KEY);
+                await this.setCounter(deviceRecordKey, 1);
+                console.log('新增独立设备:', deviceId);
+              }
+            } catch (error) {
+              console.error('更新独立设备数量失败:', error);
+            }
+          }
+          
+          // 更新今日访问次数
+          async updateTodayVisits() {
+            try {
+              const today = new Date().toISOString().split('T')[0];
+              const todayKey = `${VISITOR_CONFIG.TODAY_VISITS_KEY}_${today}`;
+              await this.incrementCounter(todayKey);
+            } catch (error) {
+              console.error('更新今日访问次数失败:', error);
             }
           }
           
@@ -2639,6 +2701,7 @@
               }
               
               this.deviceId = deviceId;
+              console.log('当前设备ID:', deviceId);
               return deviceId;
               
             } catch (error) {
@@ -2722,8 +2785,8 @@
             }
           }
           
-          // 更新显示（跨浏览器设备统计）
-          async updateDisplay() {
+          // 更新全局显示
+          async updateGlobalDisplay() {
             try {
               if (!this.networkAvailable) {
                 // 网络不可用时使用本地数据
@@ -2735,31 +2798,56 @@
               }
               
               // 先显示缓存，避免首屏空白
-              const cached = this.cache.get(VISITOR_CONFIG.COUNTER_KEY) || 0;
+              const cached = this.cache.get(VISITOR_CONFIG.GLOBAL_TOTAL_KEY) || 0;
               if (cached > 0) {
                 this.updateCounterDisplay(cached + BASE_OFFSET);
               } else {
                 this.updateCounterDisplay('统计中…');
               }
               
-              // 获取总访问次数
-              const totalVisits = await this.getCounter(VISITOR_CONFIG.COUNTER_KEY);
-              const displayValue = totalVisits + BASE_OFFSET;
+              // 获取全局总访问次数
+              const globalTotal = await this.getCounter(VISITOR_CONFIG.GLOBAL_TOTAL_KEY);
+              const displayValue = globalTotal + BASE_OFFSET;
               this.updateCounterDisplay(displayValue);
               
               // 缓存到localStorage作为备用
               this.writeCache(displayValue);
               
-              // 显示设备访问信息（调试用）
-              if (this.deviceId) {
-                const deviceVisitsKey = `${VISITOR_CONFIG.DEVICE_VISITS_KEY}_${this.deviceId}`;
-                const deviceVisits = await this.getCounter(deviceVisitsKey);
-                console.log(`当前设备 ${this.deviceId} 累计访问次数: ${deviceVisits || 0}`);
-              }
+              // 获取并显示详细统计信息
+              await this.displayDetailedStats();
               
             } catch (error) {
-              console.error('更新显示失败:', error);
+              console.error('更新全局显示失败:', error);
               this.displayCachedData();
+            }
+          }
+          
+          // 显示详细统计信息
+          async displayDetailedStats() {
+            try {
+              if (!this.deviceId) return;
+              
+              // 获取设备访问次数
+              const deviceVisitsKey = `${VISITOR_CONFIG.DEVICE_VISITS_KEY}_${this.deviceId}`;
+              const deviceVisits = await this.getCounter(deviceVisitsKey);
+              
+              // 获取独立设备数量
+              const uniqueDevices = await this.getCounter(VISITOR_CONFIG.UNIQUE_DEVICES_KEY);
+              
+              // 获取今日访问次数
+              const today = new Date().toISOString().split('T')[0];
+              const todayKey = `${VISITOR_CONFIG.TODAY_VISITS_KEY}_${today}`;
+              const todayVisits = await this.getCounter(todayKey);
+              
+              console.log('=== 全局访问统计详情 ===');
+              console.log('当前设备ID:', this.deviceId);
+              console.log('当前设备累计访问次数:', deviceVisits || 0);
+              console.log('独立设备总数:', uniqueDevices || 0);
+              console.log('今日访问次数:', todayVisits || 0);
+              console.log('========================');
+              
+            } catch (error) {
+              console.error('获取详细统计信息失败:', error);
             }
           }
           
@@ -2802,30 +2890,31 @@
           
           // 设置自动更新
           setupAutoUpdate() {
-            // 每120秒更新一次显示（减少频率）
+            // 每180秒更新一次显示（减少频率，提高稳定性）
             setInterval(() => {
               if (this.isInitialized) {
-                this.updateDisplay();
+                this.updateGlobalDisplay();
               }
-            }, 120000);
+            }, 180000);
             
             // 页面可见性变化时更新
             document.addEventListener('visibilitychange', () => {
               if (!document.hidden && this.isInitialized) {
-                this.updateDisplay();
+                this.updateGlobalDisplay();
               }
             });
           }
         }
 
-        // 初始化跨浏览器设备访问统计系统
-        window.visitorCounter = new VisitorCounter();
+        // 初始化全局统一访问统计系统
+        window.visitorCounter = new GlobalVisitorCounter();
         
         // 调试功能：在控制台显示设备信息
         setTimeout(() => {
           if (window.visitorCounter && window.visitorCounter.deviceId) {
-            console.log('=== 跨浏览器设备访问统计调试信息 ===');
+            console.log('=== 全局统一访问统计调试信息 ===');
             console.log('设备ID:', window.visitorCounter.deviceId);
+            console.log('会话ID:', window.visitorCounter.sessionId);
             console.log('命名空间:', window.visitorCounter.namespace);
             console.log('网络状态:', window.visitorCounter.networkAvailable ? '在线' : '离线');
             
@@ -2833,13 +2922,37 @@
             const deviceId = window.visitorCounter.deviceId;
             const localDeviceVisits = localStorage.getItem(`local_device_visits_${deviceId}`);
             if (localDeviceVisits) {
-              console.log('本地设备访问次数:', localDeviceVisits);
+              console.log('本地设备累计访问次数:', localDeviceVisits);
             }
             
             console.log('=====================================');
           }
-        }, 2000);
-      })();
+                }, 3000);
+        
+        // 测试功能：手动触发访问统计（用于调试）
+        window.testVisitorCounter = function() {
+          if (window.visitorCounter) {
+            console.log('=== 手动测试访问统计 ===');
+            console.log('当前设备ID:', window.visitorCounter.deviceId);
+            console.log('当前会话ID:', window.visitorCounter.sessionId);
+            
+            // 清除会话记录，允许重新计数
+            const sessionKey = `session_${window.visitorCounter.sessionId}`;
+            localStorage.removeItem(sessionKey);
+            localStorage.removeItem(`local_session_${window.visitorCounter.sessionId}`);
+            
+            // 重新初始化
+            window.visitorCounter.init();
+            
+            console.log('测试完成，请查看控制台输出');
+          } else {
+            console.error('访问统计系统未初始化');
+          }
+        };
+        
+        // 在控制台输入 testVisitorCounter() 可以手动测试
+        console.log('提示：在控制台输入 testVisitorCounter() 可以手动测试访问统计功能');
+        })();
     </script>
 
 </body>
