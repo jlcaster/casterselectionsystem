@@ -3141,27 +3141,55 @@
 <div id="page-visit-counter" style="display:none"></div>
 
 <!-- 照抄 jsq.html 页面统计脚本（安全调用） -->
-<script id="faiHawkEyeScript" charset="utf-8" type="text/javascript" src="https://fe.faisco.cn/hawkEye/outerChain.jsp?appid=16008&aid=11112263&bsAid=11112263&bsId=0&bsWid=0&isOem=true&webName=mallsite"></script>
 <script>
-(function() {
-  try {
-    if (window.Site && typeof Site.total === 'function') {
-      Site.total({ colId: 12, pdId: -1, ndId: -1, sc: 0, statId: (typeof statId !== 'undefined' ? statId : -1) });
-    }
-  } catch (e) {}
+// 初始化LeanCloud
+AV.init({
+  appId: VISITOR_CONFIG.appId,
+  appKey: VISITOR_CONFIG.appKey,
+  serverURL: VISITOR_CONFIG.serverURL
+});
 
-  try {
-    if (window.Site && typeof Site.sendBrowerInfo === 'function') {
-      Site.sendBrowerInfo(false);
-    }
-  } catch (e) {}
+// 绑定到VisitCounter表
+const VisitCounter = AV.Object.extend('VisitCounter');
 
-  try {
-    if (window.Site && typeof Site.printBaiduPushJs === 'function') {
-      Site.printBaiduPushJs();
-    }
-  } catch (e) {}
-})();
+// 更新并显示全局访问次数
+function updateVisitCount() {
+  const query = new AV.Query(VisitCounter);
+  
+  // 查询全局唯一计数器（固定ID）
+  query.get('global_visit_count')
+    .then(counter => {
+      // 计数器已存在，累加1
+      counter.increment('value', 1);
+      return counter.save();
+    })
+    .catch(error => {
+      // 首次访问时创建计数器
+      if (error.code === 101) {
+        const newCounter = new VisitCounter();
+        newCounter.set('objectId', 'global_visit_count'); // 固定ID确保全局唯一
+        newCounter.set('value', 1); // 初始值为1
+        return newCounter.save();
+      }
+      console.error('获取计数器失败:', error);
+    })
+    .then(updatedCounter => {
+      if (updatedCounter) {
+        // 更新页面中的计数器元素
+        const count = updatedCounter.get('value');
+        const counterElement = document.getElementById('visitor-counter-pos');
+        if (counterElement) {
+          counterElement.textContent = count;
+        }
+      }
+    })
+    .catch(error => {
+      console.error('更新计数器失败:', error);
+    });
+}
+
+// 页面加载完成后执行
+window.addEventListener('load', updateVisitCount);
 </script>
 
 </html>
