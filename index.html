@@ -2371,9 +2371,9 @@
           
           // API配置
           API_BASE: 'https://api.countapi.xyz',
-          TIMEOUT: 10000,
-          RETRY_TIMES: 3,
-          RETRY_DELAY: 1000
+          TIMEOUT: 5000, // 减少超时时间
+          RETRY_TIMES: 2, // 减少重试次数
+          RETRY_DELAY: 500 // 减少重试延迟
         };
 
         // 访问统计核心类
@@ -2383,6 +2383,7 @@
             this.isInitialized = false;
             this.cache = new Map();
             this.counterElement = POS;
+            this.networkAvailable = true; // 网络状态标记
             this.init();
           }
           
@@ -2391,11 +2392,20 @@
             try {
               console.log('正在初始化跨设备访问统计系统...');
               
-              // 记录本次访问
-              await this.recordVisit();
+              // 先显示缓存数据，避免空白
+              this.displayCachedData();
               
-              // 获取并显示统计数据
-              await this.updateDisplay();
+              // 检查网络连接
+              await this.checkNetworkStatus();
+              
+              // 如果网络可用，尝试记录访问
+              if (this.networkAvailable) {
+                await this.recordVisit();
+                await this.updateDisplay();
+              } else {
+                console.log('网络不可用，使用本地统计模式');
+                this.useLocalCounter();
+              }
               
               // 设置定时更新
               this.setupAutoUpdate();
@@ -2405,12 +2415,58 @@
               
             } catch (error) {
               console.error('初始化失败:', error);
-              this.displayCachedData();
+              this.useLocalCounter();
             }
+          }
+          
+          // 检查网络状态
+          async checkNetworkStatus() {
+            try {
+              // 尝试连接一个简单的API端点
+              const testUrl = `${VISITOR_CONFIG.API_BASE}/get/${this.namespace}/test`;
+              const response = await this.fetchWithTimeout(testUrl, { timeout: 3000 });
+              this.networkAvailable = response.ok;
+            } catch (error) {
+              console.warn('网络连接检查失败，切换到本地模式:', error);
+              this.networkAvailable = false;
+            }
+          }
+          
+          // 使用本地计数器
+          useLocalCounter() {
+            const deviceId = this.getDeviceId();
+            const today = new Date().toISOString().split('T')[0];
+            const todayKey = `local_${today}`;
+            
+            // 增加本地访问计数
+            let localCount = parseInt(localStorage.getItem('jl_local_visits') || '0', 10);
+            localCount++;
+            localStorage.setItem('jl_local_visits', String(localCount));
+            
+            // 记录今日访问
+            let todayCount = parseInt(localStorage.getItem(todayKey) || '0', 10);
+            todayCount++;
+            localStorage.setItem(todayKey, String(todayCount));
+            
+            // 记录设备访问
+            const deviceKey = `local_device_${deviceId}`;
+            localStorage.setItem(deviceKey, Date.now().toString());
+            
+            // 更新显示
+            const displayValue = BASE_OFFSET + localCount;
+            this.updateCounterDisplay(displayValue);
+            this.writeCache(displayValue);
+            
+            console.log('本地访问统计已更新');
           }
           
           // 记录访问
           async recordVisit() {
+            if (!this.networkAvailable) {
+              this.useLocalCounter();
+              return;
+            }
+            
             const deviceId = this.getDeviceId();
             const timestamp = Date.now();
             
@@ -2427,8 +2483,9 @@
               console.log('访问记录成功');
               
             } catch (error) {
-              console.error('记录访问失败:', error);
-              // 即使失败也继续执行，不影响页面显示
+              console.error('记录访问失败，切换到本地模式:', error);
+              this.networkAvailable = false;
+              this.useLocalCounter();
             }
           }
           
@@ -2457,6 +2514,11 @@
           
           // 获取计数器值
           async getCounter(key) {
+            if (!this.networkAvailable) {
+              // 网络不可用时返回本地缓存
+              return this.cache.get(key) || this.readCache() - BASE_OFFSET || 0;
+            }
+            
             const url = `${VISITOR_CONFIG.API_BASE}/get/${this.namespace}/${key}`;
             
             try {
@@ -2468,6 +2530,8 @@
               }
             } catch (error) {
               console.error(`获取计数器失败: ${key}`, error);
+              // 网络失败时切换到本地模式
+              this.networkAvailable = false;
             }
             
             // 返回缓存值或默认值
@@ -2476,6 +2540,8 @@
           
           // 更新每日统计
           async updateDailyStats() {
+            if (!this.networkAvailable) return;
+            
             const today = new Date().toISOString().split('T')[0];
             const todayKey = `${VISITOR_CONFIG.TODAY_KEY}_${today}`;
             
@@ -2488,6 +2554,8 @@
           
           // 记录设备信息
           async recordDevice(deviceId, timestamp) {
+            if (!this.networkAvailable) return;
+            
             const deviceKey = `${VISITOR_CONFIG.DEVICES_KEY}_${deviceId}`;
             
             try {
@@ -2508,6 +2576,8 @@
           
           // 设置计数器值
           async setCounter(key, value) {
+            if (!this.networkAvailable) return value;
+            
             const url = `${VISITOR_CONFIG.API_BASE}/set/${this.namespace}/${key}/${value}`;
             
             try {
@@ -2540,13 +2610,15 @@
           // 带超时的fetch
           async fetchWithTimeout(url, options = {}) {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), VISITOR_CONFIG.TIMEOUT);
+            const timeout = options.timeout || VISITOR_CONFIG.TIMEOUT;
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
             
             try {
               const response = await fetch(url, {
                 ...options,
                 signal: controller.signal,
-                cache: 'no-store'
+                cache: 'no-store',
+                mode: 'cors'
               });
               clearTimeout(timeoutId);
               return response;
@@ -2573,6 +2645,15 @@
           // 更新显示
           async updateDisplay() {
             try {
+              if (!this.networkAvailable) {
+                // 网络不可用时使用本地数据
+                const localCount = parseInt(localStorage.getItem('jl_local_visits') || '0', 10);
+                const displayValue = BASE_OFFSET + localCount;
+                this.updateCounterDisplay(displayValue);
+                this.writeCache(displayValue);
+                return;
+              }
+              
               // 先显示缓存，避免首屏空白
               const cached = this.cache.get(VISITOR_CONFIG.COUNTER_KEY) || 0;
               if (cached > 0) {
@@ -2634,12 +2715,12 @@
           
           // 设置自动更新
           setupAutoUpdate() {
-            // 每60秒更新一次显示
+            // 每120秒更新一次显示（减少频率）
             setInterval(() => {
               if (this.isInitialized) {
                 this.updateDisplay();
               }
-            }, 60000);
+            }, 120000);
             
             // 页面可见性变化时更新
             document.addEventListener('visibilitychange', () => {
