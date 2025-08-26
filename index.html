@@ -2351,13 +2351,13 @@
       try { window.Site && typeof Site.sendBrowerInfo === 'function' && Site.sendBrowerInfo(false); } catch (e) {}
       try { window.Site && typeof Site.ajaxLogDog === 'function' && Site.ajaxLogDog(200002, 1); } catch (e) {}
 
-      // 全局统一访问统计系统：实现跨浏览器、跨设备的访问次数累加
-      (function initGlobalVisitorCounter(){
+      // 完整访问统计系统：云端存储 + 后端API + 设备指纹识别
+      (function initCompleteVisitorCounter(){      
         const BASE_OFFSET = 16000; // 起始基数
         const POS = document.getElementById('visitor-counter-pos');
         if (!POS) return;
 
-        // 全局访问统计系统配置
+        // 完整访问统计系统配置
         const VISITOR_CONFIG = {
           // 固定命名空间，确保全局统一
           NAMESPACE: 'jianglong_global_visitor_counter',
@@ -2370,31 +2370,37 @@
           
           // API配置
           API_BASE: 'https://api.countapi.xyz',
+          BACKEND_API: '/api/track-visit', // 后端API端点
           TIMEOUT: 8000, // 增加超时时间，确保稳定性
           RETRY_TIMES: 3, // 增加重试次数
           RETRY_DELAY: 1000 // 增加重试延迟
         };
 
-        // 全局访问统计核心类
-        class GlobalVisitorCounter {
+        // 完整访问统计核心类
+        class CompleteVisitorCounter {
           constructor() {
             this.namespace = VISITOR_CONFIG.NAMESPACE;
             this.isInitialized = false;
             this.cache = new Map();
             this.counterElement = POS;
             this.networkAvailable = true; // 网络状态标记
+            this.backendAvailable = false; // 后端API可用性标记
             this.deviceId = null; // 设备唯一ID
             this.sessionId = null; // 会话ID（防止重复计数）
+            this.browserInfo = null; // 浏览器信息
             this.init();
           }
           
-          // 初始化全局访问统计
+          // 初始化完整访问统计
           async init() {
             try {
-              console.log('正在初始化全局统一访问统计系统...');
+              console.log('正在初始化完整访问统计系统...');
               
               // 生成会话ID，防止重复计数
               this.sessionId = this.generateSessionId();
+              
+              // 获取浏览器信息
+              this.browserInfo = this.getBrowserInfo();
               
               // 先显示缓存数据，避免空白
               this.displayCachedData();
@@ -2402,11 +2408,16 @@
               // 获取设备唯一ID（跨浏览器识别）
               await this.getDeviceFingerprint();
               
-              // 检查网络连接
+              // 检查网络连接和后端API
               await this.checkNetworkStatus();
+              await this.checkBackendAPI();
               
-              // 记录本次访问并更新全局统计
-              if (this.networkAvailable) {
+              // 记录本次访问并更新统计
+              if (this.backendAvailable) {
+                // 优先使用后端API
+                await this.recordBackendVisit();
+              } else if (this.networkAvailable) {
+                // 使用云端统计
                 await this.recordGlobalVisit();
                 await this.updateGlobalDisplay();
               } else {
@@ -2418,7 +2429,7 @@
               this.setupAutoUpdate();
               
               this.isInitialized = true;
-              console.log('全局统一访问统计系统已就绪');
+              console.log('完整访问统计系统已就绪');
               
             } catch (error) {
               console.error('初始化失败:', error);
@@ -2431,6 +2442,50 @@
             return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
           }
           
+          // 获取浏览器信息
+          getBrowserInfo() {
+            const userAgent = navigator.userAgent;
+            
+            // 获取浏览器名称
+            let browserName = 'Unknown';
+            if (userAgent.indexOf('Chrome') > -1) browserName = 'Chrome';
+            else if (userAgent.indexOf('Firefox') > -1) browserName = 'Firefox';
+            else if (userAgent.indexOf('Safari') > -1 && userAgent.indexOf('Chrome') === -1) browserName = 'Safari';
+            else if (userAgent.indexOf('Edge') > -1) browserName = 'Edge';
+            else if (userAgent.indexOf('MSIE') > -1 || userAgent.indexOf('Trident') > -1) browserName = 'IE';
+            
+            // 获取浏览器版本
+            let browserVersion = 'Unknown';
+            if (userAgent.indexOf('Chrome') > -1) {
+              const match = userAgent.match(/Chrome\/(\d+\.\d+)/);
+              browserVersion = match ? match[1] : 'Unknown';
+            } else if (userAgent.indexOf('Firefox') > -1) {
+              const match = userAgent.match(/Firefox\/(\d+\.\d+)/);
+              browserVersion = match ? match[1] : 'Unknown';
+            } else if (userAgent.indexOf('Safari') > -1 && userAgent.indexOf('Chrome') === -1) {
+              const match = userAgent.match(/Version\/(\d+\.\d+)/);
+              browserVersion = match ? match[1] : 'Unknown';
+            } else if (userAgent.indexOf('Edge') > -1) {
+              const match = userAgent.match(/Edge\/(\d+\.\d+)/);
+              browserVersion = match ? match[1] : 'Unknown';
+            }
+            
+            // 获取操作系统
+            let os = 'Unknown';
+            if (userAgent.indexOf('Win') > -1) os = 'Windows';
+            else if (userAgent.indexOf('Mac') > -1) os = 'MacOS';
+            else if (userAgent.indexOf('Linux') > -1) os = 'Linux';
+            else if (userAgent.indexOf('Android') > -1) os = 'Android';
+            else if (userAgent.indexOf('iPhone') > -1 || userAgent.indexOf('iPad') > -1) os = 'iOS';
+            
+            return {
+              name: browserName,
+              version: browserVersion,
+              os: os,
+              userAgent: userAgent
+            };
+          }
+          
           // 检查网络状态
           async checkNetworkStatus() {
             try {
@@ -2438,10 +2493,30 @@
               const testUrl = `${VISITOR_CONFIG.API_BASE}/get/${this.namespace}/${VISITOR_CONFIG.GLOBAL_TOTAL_KEY}`;
               const response = await this.fetchWithTimeout(testUrl, { timeout: 5000 });
               this.networkAvailable = response.ok;
-              console.log('网络连接正常，使用云端统计模式');
+              console.log('网络连接正常');
             } catch (error) {
-              console.warn('网络连接检查失败，切换到本地模式:', error);
+              console.warn('网络连接检查失败:', error);
               this.networkAvailable = false;
+            }
+          }
+          
+          // 检查后端API可用性
+          async checkBackendAPI() {
+            try {
+              // 尝试连接后端API
+              const response = await this.fetchWithTimeout(VISITOR_CONFIG.BACKEND_API, {
+                method: 'GET',
+                timeout: 3000
+              });
+              this.backendAvailable = response.ok;
+              if (this.backendAvailable) {
+                console.log('后端API可用，使用后端统计模式');
+              } else {
+                console.log('后端API不可用，使用云端统计模式');
+              }
+            } catch (error) {
+              console.warn('后端API检查失败，使用云端统计模式:', error);
+              this.backendAvailable = false;
             }
           }
           
@@ -2489,6 +2564,71 @@
             this.writeCache(displayValue);
             
             console.log(`本地访问统计已更新，设备 ${deviceId} 累计访问次数: ${deviceVisits}`);
+          }
+          
+          // 记录后端访问（详细统计）
+          async recordBackendVisit() {
+            if (!this.backendAvailable) {
+              if (this.networkAvailable) {
+                await this.recordGlobalVisit();
+              } else {
+                this.useLocalCounter();
+              }
+              return;
+            }
+            
+            const deviceId = this.getDeviceId();
+            const timestamp = new Date().toISOString();
+            
+            try {
+              // 检查是否已经记录过本次会话
+              const sessionKey = `session_${this.sessionId}`;
+              const sessionRecorded = await this.getCounter(sessionKey);
+              
+              if (sessionRecorded > 0) {
+                console.log('本次会话已记录，跳过重复计数');
+                return;
+              }
+              
+              // 发送详细访问数据到后端
+              const visitData = {
+                deviceId: deviceId,
+                browser: this.browserInfo,
+                timestamp: timestamp,
+                sessionId: this.sessionId
+              };
+              
+              const response = await this.fetchWithTimeout(VISITOR_CONFIG.BACKEND_API, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(visitData)
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                console.log('后端访问记录成功:', data);
+                
+                // 更新显示
+                this.updateBackendDisplay(data);
+                
+                // 标记本次会话已记录
+                await this.setCounter(sessionKey, 1);
+                
+              } else {
+                throw new Error('后端API响应错误');
+              }
+              
+            } catch (error) {
+              console.error('记录后端访问失败，切换到云端模式:', error);
+              this.backendAvailable = false;
+              if (this.networkAvailable) {
+                await this.recordGlobalVisit();
+              } else {
+                this.useLocalCounter();
+              }
+            }
           }
           
           // 记录全局访问（跨浏览器、跨设备统计）
@@ -2822,6 +2962,28 @@
             }
           }
           
+          // 更新后端显示
+          updateBackendDisplay(data) {
+            try {
+              if (data.success) {
+                const displayValue = BASE_OFFSET + data.totalVisits;
+                this.updateCounterDisplay(displayValue);
+                this.writeCache(displayValue);
+                
+                console.log('=== 后端访问统计详情 ===');
+                console.log('总访问次数:', data.totalVisits);
+                console.log('设备总数:', data.totalDevices);
+                console.log('本设备访问次数:', data.deviceVisits);
+                console.log('本设备使用浏览器数:', data.deviceBrowsers);
+                console.log('当前浏览器:', this.browserInfo.name, this.browserInfo.version);
+                console.log('操作系统:', this.browserInfo.os);
+                console.log('========================');
+              }
+            } catch (error) {
+              console.error('更新后端显示失败:', error);
+            }
+          }
+          
           // 显示详细统计信息
           async displayDetailedStats() {
             try {
@@ -2844,6 +3006,8 @@
               console.log('当前设备累计访问次数:', deviceVisits || 0);
               console.log('独立设备总数:', uniqueDevices || 0);
               console.log('今日访问次数:', todayVisits || 0);
+              console.log('当前浏览器:', this.browserInfo.name, this.browserInfo.version);
+              console.log('操作系统:', this.browserInfo.os);
               console.log('========================');
               
             } catch (error) {
@@ -2906,17 +3070,19 @@
           }
         }
 
-        // 初始化全局统一访问统计系统
-        window.visitorCounter = new GlobalVisitorCounter();
+                // 初始化完整访问统计系统
+        window.visitorCounter = new CompleteVisitorCounter();
         
         // 调试功能：在控制台显示设备信息
         setTimeout(() => {
           if (window.visitorCounter && window.visitorCounter.deviceId) {
-            console.log('=== 全局统一访问统计调试信息 ===');
+            console.log('=== 完整访问统计调试信息 ===');
             console.log('设备ID:', window.visitorCounter.deviceId);
             console.log('会话ID:', window.visitorCounter.sessionId);
             console.log('命名空间:', window.visitorCounter.namespace);
             console.log('网络状态:', window.visitorCounter.networkAvailable ? '在线' : '离线');
+            console.log('后端API状态:', window.visitorCounter.backendAvailable ? '可用' : '不可用');
+            console.log('浏览器信息:', window.visitorCounter.browserInfo);
             
             // 显示本地存储的设备访问信息
             const deviceId = window.visitorCounter.deviceId;
@@ -2927,7 +3093,7 @@
             
             console.log('=====================================');
           }
-                }, 3000);
+        }, 3000);
         
         // 测试功能：手动触发访问统计（用于调试）
         window.testVisitorCounter = function() {
@@ -2935,6 +3101,7 @@
             console.log('=== 手动测试访问统计 ===');
             console.log('当前设备ID:', window.visitorCounter.deviceId);
             console.log('当前会话ID:', window.visitorCounter.sessionId);
+            console.log('浏览器信息:', window.visitorCounter.browserInfo);
             
             // 清除会话记录，允许重新计数
             const sessionKey = `session_${window.visitorCounter.sessionId}`;
