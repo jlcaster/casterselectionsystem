@@ -5,6 +5,8 @@
     <title>江龙脚轮选型系统 - FABE话术生成器</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- 在LeanCloud SDK之前添加jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- 添加LeanCloud SDK -->
     <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.0/dist/av-min.js"></script>
     <!-- 设备指纹库 - 用于跨浏览器设备识别 -->
@@ -3141,6 +3143,58 @@
           console.error('LeanCloud 初始化失败：', e);
         }
       });
+    </script>
+
+    <!-- 计数器（稳定版本） -->
+    <script>
+    // 在index.html底部添加此代码
+    document.addEventListener('DOMContentLoaded', function() {
+        // 检查LeanCloud SDK是否加载
+        if (typeof AV === 'undefined') {
+            console.error('LeanCloud SDK未加载');
+            updateCounterDisplay('加载失败');
+            return;
+        }
+        
+        // 初始化LeanCloud
+        AV.init({
+            appId: "7PWX24aEMmmhG9jEbbVeJFxz-MdYXbMMI",
+            appKey: "9FI33tzxiiuvZVwn6tPBrIpJ",
+            serverURL: "https://7pwx24ae.api.lncldglobal.com"
+        });
+
+        // 更新计数器
+        updateVisitCount();
+    });
+
+    function updateVisitCount() {
+        const VisitCounter = AV.Object.extend('VisitCounter');
+        const query = new AV.Query(VisitCounter);
+        
+        query.first().then(counter => {
+            if (counter) {
+                const currentCount = counter.get('count') || 0;
+                counter.set('count', currentCount + 1);
+                return counter.save();
+            } else {
+                const newCounter = new VisitCounter();
+                return newCounter.save({ count: 1 });
+            }
+        }).then(updatedCounter => {
+            const count = updatedCounter.get('count');
+            updateCounterDisplay(`访问次数：${count}`);
+        }).catch(error => {
+            console.error('计数更新失败：', error);
+            updateCounterDisplay('加载失败');
+        });
+    }
+
+    function updateCounterDisplay(text) {
+        const counterElement = document.querySelector('.visitor-counter');
+        if (counterElement) {
+            counterElement.innerHTML = `<i class="fas fa-eye"></i> ${text}`;
+        }
+    }
     </script>
 
 </body>
