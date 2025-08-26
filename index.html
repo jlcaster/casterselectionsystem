@@ -5,6 +5,8 @@
     <title>江龙脚轮选型系统 - FABE话术生成器</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- 设备指纹库 - 用于跨浏览器设备识别 -->
+    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -2349,8 +2351,8 @@
       try { window.Site && typeof Site.sendBrowerInfo === 'function' && Site.sendBrowerInfo(false); } catch (e) {}
       try { window.Site && typeof Site.ajaxLogDog === 'function' && Site.ajaxLogDog(200002, 1); } catch (e) {}
 
-      // 跨设备访问统计系统：基于 countapi.xyz 实现云端持久化和实时同步
-      (function initCrossDeviceVisitorCounter(){
+      // 跨浏览器设备访问统计系统：基于设备指纹和云端存储实现
+      (function initCrossBrowserVisitorCounter(){
         const BASE_OFFSET = 16000; // 起始基数
         const POS = document.getElementById('visitor-counter-pos');
         if (!POS) return;
@@ -2368,6 +2370,7 @@
           COUNTER_KEY: 'total_visits',
           TODAY_KEY: 'today_visits',
           DEVICES_KEY: 'unique_devices',
+          DEVICE_VISITS_KEY: 'device_visits', // 设备访问次数
           
           // API配置
           API_BASE: 'https://api.countapi.xyz',
@@ -2384,16 +2387,20 @@
             this.cache = new Map();
             this.counterElement = POS;
             this.networkAvailable = true; // 网络状态标记
+            this.deviceId = null; // 设备唯一ID
             this.init();
           }
           
           // 初始化
           async init() {
             try {
-              console.log('正在初始化跨设备访问统计系统...');
+              console.log('正在初始化跨浏览器设备访问统计系统...');
               
               // 先显示缓存数据，避免空白
               this.displayCachedData();
+              
+              // 获取设备唯一ID（跨浏览器识别）
+              await this.getDeviceFingerprint();
               
               // 检查网络连接
               await this.checkNetworkStatus();
@@ -2411,7 +2418,7 @@
               this.setupAutoUpdate();
               
               this.isInitialized = true;
-              console.log('跨设备访问统计系统已就绪');
+              console.log('跨浏览器设备访问统计系统已就绪');
               
             } catch (error) {
               console.error('初始化失败:', error);
@@ -2432,35 +2439,41 @@
             }
           }
           
-          // 使用本地计数器
+          // 使用本地计数器（跨浏览器设备统计）
           useLocalCounter() {
             const deviceId = this.getDeviceId();
             const today = new Date().toISOString().split('T')[0];
             const todayKey = `local_${today}`;
             
-            // 增加本地访问计数
+            // 增加本地总访问计数
             let localCount = parseInt(localStorage.getItem('jl_local_visits') || '0', 10);
             localCount++;
             localStorage.setItem('jl_local_visits', String(localCount));
+            
+            // 记录设备访问次数（跨浏览器累加）
+            const deviceVisitsKey = `local_device_visits_${deviceId}`;
+            let deviceVisits = parseInt(localStorage.getItem(deviceVisitsKey) || '0', 10);
+            deviceVisits++;
+            localStorage.setItem(deviceVisitsKey, String(deviceVisits));
             
             // 记录今日访问
             let todayCount = parseInt(localStorage.getItem(todayKey) || '0', 10);
             todayCount++;
             localStorage.setItem(todayKey, String(todayCount));
             
-            // 记录设备访问
-            const deviceKey = `local_device_${deviceId}`;
-            localStorage.setItem(deviceKey, Date.now().toString());
+            // 记录设备最后访问时间
+            const deviceTimeKey = `local_device_time_${deviceId}`;
+            localStorage.setItem(deviceTimeKey, Date.now().toString());
             
             // 更新显示
             const displayValue = BASE_OFFSET + localCount;
             this.updateCounterDisplay(displayValue);
             this.writeCache(displayValue);
             
-            console.log('本地访问统计已更新');
+            console.log(`本地访问统计已更新，设备 ${deviceId} 访问次数: ${deviceVisits}`);
           }
           
-          // 记录访问
+          // 记录访问（跨浏览器设备统计）
           async recordVisit() {
             if (!this.networkAvailable) {
               this.useLocalCounter();
@@ -2474,18 +2487,45 @@
               // 增加总访问次数
               await this.incrementCounter(VISITOR_CONFIG.COUNTER_KEY);
               
+              // 记录设备访问（跨浏览器累加）
+              await this.recordDeviceVisit(deviceId, timestamp);
+              
               // 更新今日访问
               await this.updateDailyStats();
               
-              // 记录设备信息
-              await this.recordDevice(deviceId, timestamp);
-              
-              console.log('访问记录成功');
+              console.log('跨浏览器访问记录成功，设备ID:', deviceId);
               
             } catch (error) {
               console.error('记录访问失败，切换到本地模式:', error);
               this.networkAvailable = false;
               this.useLocalCounter();
+            }
+          }
+          
+          // 记录设备访问（跨浏览器累加）
+          async recordDeviceVisit(deviceId, timestamp) {
+            try {
+              // 设备访问次数键名
+              const deviceVisitsKey = `${VISITOR_CONFIG.DEVICE_VISITS_KEY}_${deviceId}`;
+              
+              // 获取设备当前访问次数
+              let deviceVisits = await this.getCounter(deviceVisitsKey);
+              if (!deviceVisits) {
+                deviceVisits = 0;
+              }
+              
+              // 增加设备访问次数
+              deviceVisits++;
+              await this.setCounter(deviceVisitsKey, deviceVisits);
+              
+              // 记录设备最后访问时间
+              const deviceTimeKey = `device_time_${deviceId}`;
+              await this.setCounter(deviceTimeKey, timestamp);
+              
+              console.log(`设备 ${deviceId} 访问次数: ${deviceVisits}`);
+              
+            } catch (error) {
+              console.error('记录设备访问失败:', error);
             }
           }
           
@@ -2552,27 +2592,7 @@
             }
           }
           
-          // 记录设备信息
-          async recordDevice(deviceId, timestamp) {
-            if (!this.networkAvailable) return;
-            
-            const deviceKey = `${VISITOR_CONFIG.DEVICES_KEY}_${deviceId}`;
-            
-            try {
-              // 检查设备是否已记录
-              const existing = await this.getCounter(deviceKey);
-              if (!existing) {
-                // 新设备，增加独立设备计数
-                await this.incrementCounter(VISITOR_CONFIG.DEVICES_KEY);
-              }
-              
-              // 更新设备最后访问时间
-              await this.setCounter(deviceKey, timestamp);
-              
-            } catch (error) {
-              console.error('记录设备信息失败:', error);
-            }
-          }
+
           
           // 设置计数器值
           async setCounter(key, value) {
@@ -2594,17 +2614,77 @@
             return value;
           }
           
-          // 获取设备ID
-          getDeviceId() {
-            let deviceId = localStorage.getItem('jl_visitor_device_id');
+          // 获取设备指纹（跨浏览器识别）
+          async getDeviceFingerprint() {
+            try {
+              // 检查是否已有缓存的设备ID
+              let deviceId = localStorage.getItem('jl_device_fingerprint');
+              
+              if (!deviceId) {
+                // 使用FingerprintJS生成设备指纹
+                if (typeof FingerprintJS !== 'undefined') {
+                  const fp = await FingerprintJS.load();
+                  const result = await fp.get();
+                  deviceId = result.visitorId;
+                  
+                  // 缓存设备指纹
+                  localStorage.setItem('jl_device_fingerprint', deviceId);
+                  console.log('设备指纹已生成:', deviceId);
+                } else {
+                  // 降级方案：使用传统方法生成设备ID
+                  deviceId = this.generateFallbackDeviceId();
+                  localStorage.setItem('jl_device_fingerprint', deviceId);
+                  console.log('使用降级方案生成设备ID:', deviceId);
+                }
+              }
+              
+              this.deviceId = deviceId;
+              return deviceId;
+              
+            } catch (error) {
+              console.error('获取设备指纹失败:', error);
+              // 降级方案
+              this.deviceId = this.generateFallbackDeviceId();
+              return this.deviceId;
+            }
+          }
+          
+          // 降级方案：生成设备ID
+          generateFallbackDeviceId() {
+            // 基于浏览器特征生成相对稳定的ID
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillText('设备指纹测试', 2, 2);
             
-            if (!deviceId) {
-              // 生成唯一设备ID
-              deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-              localStorage.setItem('jl_visitor_device_id', deviceId);
+            const canvasFingerprint = canvas.toDataURL();
+            
+            // 收集设备特征
+            const features = [
+              navigator.userAgent,
+              navigator.language,
+              screen.width + 'x' + screen.height,
+              new Date().getTimezoneOffset(),
+              navigator.hardwareConcurrency || 'unknown',
+              navigator.deviceMemory || 'unknown',
+              canvasFingerprint.substring(0, 50)
+            ].join('|');
+            
+            // 生成哈希
+            let hash = 0;
+            for (let i = 0; i < features.length; i++) {
+              const char = features.charCodeAt(i);
+              hash = ((hash << 5) - hash) + char;
+              hash = hash & hash; // 转换为32位整数
             }
             
-            return deviceId;
+            return 'device_' + Math.abs(hash).toString(36);
+          }
+          
+          // 获取设备ID（兼容旧方法）
+          getDeviceId() {
+            return this.deviceId || this.generateFallbackDeviceId();
           }
           
           // 带超时的fetch
@@ -2642,7 +2722,7 @@
             }
           }
           
-          // 更新显示
+          // 更新显示（跨浏览器设备统计）
           async updateDisplay() {
             try {
               if (!this.networkAvailable) {
@@ -2669,6 +2749,13 @@
               
               // 缓存到localStorage作为备用
               this.writeCache(displayValue);
+              
+              // 显示设备访问信息（调试用）
+              if (this.deviceId) {
+                const deviceVisitsKey = `${VISITOR_CONFIG.DEVICE_VISITS_KEY}_${this.deviceId}`;
+                const deviceVisits = await this.getCounter(deviceVisitsKey);
+                console.log(`当前设备 ${this.deviceId} 累计访问次数: ${deviceVisits || 0}`);
+              }
               
             } catch (error) {
               console.error('更新显示失败:', error);
@@ -2731,8 +2818,27 @@
           }
         }
 
-        // 初始化跨设备访问统计系统
+        // 初始化跨浏览器设备访问统计系统
         window.visitorCounter = new VisitorCounter();
+        
+        // 调试功能：在控制台显示设备信息
+        setTimeout(() => {
+          if (window.visitorCounter && window.visitorCounter.deviceId) {
+            console.log('=== 跨浏览器设备访问统计调试信息 ===');
+            console.log('设备ID:', window.visitorCounter.deviceId);
+            console.log('命名空间:', window.visitorCounter.namespace);
+            console.log('网络状态:', window.visitorCounter.networkAvailable ? '在线' : '离线');
+            
+            // 显示本地存储的设备访问信息
+            const deviceId = window.visitorCounter.deviceId;
+            const localDeviceVisits = localStorage.getItem(`local_device_visits_${deviceId}`);
+            if (localDeviceVisits) {
+              console.log('本地设备访问次数:', localDeviceVisits);
+            }
+            
+            console.log('=====================================');
+          }
+        }, 2000);
       })();
     </script>
 
