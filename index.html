@@ -1,10 +1,12 @@
-<!DOCTYPE html><html lang="zh-CN"><heac:\Users\36749\caster-site\index.htmld>
+<!DOCTYPE html><html lang="zh-CN"><head>
     <meta charset="UTF-8">
     <script id="faiHawkEyeScript" charset="utf-8" type="text/javascript" src="https://fe.faisco.cn/hawkEye/outerChain.jsp?appid=16008&aid=11112263&bsAid=11112263&bsId=0&bsWid=0&isOem=true&webName=mallsite"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>江龙脚轮选型系统 - FABE话术生成器</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- 添加LeanCloud SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.0/dist/av-min.js"></script>
     <!-- 设备指纹库 - 用于跨浏览器设备识别 -->
     <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
     <style>
@@ -1050,7 +1052,7 @@
                 <div class="qr-codes">
                     <!-- 产品分享页二维码 -->
                     <div class="qr-item">
-                        <img src="data:image/png;base64,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" alt="江龙脚轮产品分享页" class="qr-img" onerror="handleImageError(this, 'images/product-fallback.png')">
+                        <img src="data:image/png;base64,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" alt="江龙脚轮产品分享页" class="qr-img" onerror="handleImageError(this, 'images/product-fallback.png')">
                         <div class="qr-text">江龙脚轮产品分享页</div>
                     </div>
 
@@ -1071,9 +1073,8 @@
         
         <div class="footer">
             <div class="footer-content">
-                <div class="visitor-counter visitorCounterWrap" id="visitor-counter" style="display:flex;gap:8px;align-items:center;">
-                    <span style="color:#2b6cb0;font-weight:600;white-space:nowrap;">访问量</span>
-                    <div class='visitorCounterPosition' id="visitor-counter-pos" style="min-width:72px;text-align:left;color:#2b6cb0;font-weight:700;"></div>
+                <div class="visitor-counter">
+                    <i class="fas fa-eye"></i> 加载中...
                 </div>
                 <div class="company-info" style="display:flex;flex-direction:column;gap:2px;">
                     <p>© 2025 阳江市江龙精密脚轮有限公司 | 专业脚轮解决方案提供商</p>
@@ -2351,30 +2352,7 @@
       try { window.Site && typeof Site.sendBrowerInfo === 'function' && Site.sendBrowerInfo(false); } catch (e) {}
       try { window.Site && typeof Site.ajaxLogDog === 'function' && Site.ajaxLogDog(200002, 1); } catch (e) {}
 
-      // 完整访问统计系统：云端存储 + 后端API + 设备指纹识别
-      (function initCompleteVisitorCounter(){      
-        const BASE_OFFSET = 16000; // 起始基数
-        const POS = document.getElementById('visitor-counter-pos');
-        if (!POS) return;
-
-        // 完整访问统计系统配置
-        const VISITOR_CONFIG = {
-          // 固定命名空间，确保全局统一
-          NAMESPACE: 'jianglong_global_visitor_counter',
-          
-          // 计数器键名
-          GLOBAL_TOTAL_KEY: 'global_total_visits', // 全局总访问次数
-          DEVICE_VISITS_KEY: 'device_visits', // 设备访问次数
-          UNIQUE_DEVICES_KEY: 'unique_devices', // 独立设备数量
-          TODAY_VISITS_KEY: 'today_visits', // 今日访问次数
-          
-          // API配置
-          API_BASE: 'https://api.countapi.xyz',
-          BACKEND_API: '/api/track-visit', // 后端API端点
-          TIMEOUT: 8000, // 增加超时时间，确保稳定性
-          RETRY_TIMES: 3, // 增加重试次数
-          RETRY_DELAY: 1000 // 增加重试延迟
-        };
+      // 原有计数器系统已移除，替换为LeanCloud计数器系统
 
         // 完整访问统计核心类
         class CompleteVisitorCounter {
@@ -3119,36 +3097,51 @@
         
         // 在控制台输入 testVisitorCounter() 可以手动测试
         console.log('提示：在控制台输入 testVisitorCounter() 可以手动测试访问统计功能');
-        })();
+        // )();
+    </script>
+
+    <!-- 初始化 LeanCloud 计数器并更新页脚显示 -->
+    <script>
+      // 初始化 LeanCloud 计数器并更新页脚显示
+      document.addEventListener('DOMContentLoaded', function() {
+        try {
+          if (typeof AV !== 'undefined' && AV && typeof AV.init === 'function') {
+            AV.init({
+              appId: "7PWX24aEMmmhG9jEbbVeJFxz-MdYXbMMI",
+              appKey: "9FI33tzxiiuvZVwn6tPBrIpJ",
+              serverURL: "https://7pwx24ae.api.lncldglobal.com"
+            });
+
+            const VisitCounter = AV.Object.extend('VisitCounter');
+            const query = new AV.Query(VisitCounter);
+            query.first().then(counter => {
+              if (counter) {
+                const currentCount = counter.get('count') || 0;
+                counter.set('count', currentCount + 1);
+                return counter.save();
+              } else {
+                const newCounter = new VisitCounter();
+                return newCounter.set('count', 1).save();
+              }
+            }).then(updatedCounter => {
+              const count = updatedCounter.get('count');
+              const el = document.querySelector('.visitor-counter');
+              if (el) {
+                el.innerHTML = `<i class="fas fa-eye"></i> 访问次数：${count}`;
+              }
+            }).catch(err => {
+              console.error('计数更新失败：', err);
+              const el = document.querySelector('.visitor-counter');
+              if (el) {
+                el.innerHTML = `<i class="fas fa-eye"></i> 访问次数：加载失败`;
+              }
+            });
+          }
+        } catch (e) {
+          console.error('LeanCloud 初始化失败：', e);
+        }
+      });
     </script>
 
 </body>
-
-<!-- 计数器容器（预留，自 jsq.html 要求） -->
-<div id="page-visit-counter" style="display:none"></div>
-
-<!-- 照抄 jsq.html 页面统计脚本（安全调用） -->
-<script id="faiHawkEyeScript" charset="utf-8" type="text/javascript" src="https://fe.faisco.cn/hawkEye/outerChain.jsp?appid=16008&aid=11112263&bsAid=11112263&bsId=0&bsWid=0&isOem=true&webName=mallsite"></script>
-<script>
-(function() {
-  try {
-    if (window.Site && typeof Site.total === 'function') {
-      Site.total({ colId: 12, pdId: -1, ndId: -1, sc: 0, statId: (typeof statId !== 'undefined' ? statId : -1) });
-    }
-  } catch (e) {}
-
-  try {
-    if (window.Site && typeof Site.sendBrowerInfo === 'function') {
-      Site.sendBrowerInfo(false);
-    }
-  } catch (e) {}
-
-  try {
-    if (window.Site && typeof Site.printBaiduPushJs === 'function') {
-      Site.printBaiduPushJs();
-    }
-  } catch (e) {}
-})();
-</script>
-
 </html>
