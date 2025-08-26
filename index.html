@@ -1,4 +1,3 @@
-
 <!DOCTYPE html><html lang="zh-CN"><heac:\Users\36749\caster-site\index.htmld>
     <meta charset="UTF-8">
     <script id="faiHawkEyeScript" charset="utf-8" type="text/javascript" src="https://fe.faisco.cn/hawkEye/outerChain.jsp?appid=16008&aid=11112263&bsAid=11112263&bsId=0&bsWid=0&isOem=true&webName=mallsite"></script>
@@ -2350,61 +2349,309 @@
       try { window.Site && typeof Site.sendBrowerInfo === 'function' && Site.sendBrowerInfo(false); } catch (e) {}
       try { window.Site && typeof Site.ajaxLogDog === 'function' && Site.ajaxLogDog(200002, 1); } catch (e) {}
 
-      // 动画计数展示：GitHub Pages 无后端，采用 countapi.xyz 实现云端持久化 + 24h 设备去重
-      (function initAnimatedVisitorCounter(){
+      // 跨设备访问统计系统：基于 countapi.xyz 实现云端持久化和实时同步
+      (function initCrossDeviceVisitorCounter(){
         const BASE_OFFSET = 16000; // 起始基数
         const POS = document.getElementById('visitor-counter-pos');
         if (!POS) return;
 
-        // 动态命名空间/键：基于当前域名与路径，避免与他人冲突
-        const NS_HOST = (location.hostname || 'localhost').replace(/[^a-z0-9]/gi, '_');
-        const NS_REPO = (location.pathname.split('/')[1] || 'root').replace(/[^a-z0-9]/gi, '_');
-        const NAMESPACE = `jl_${NS_HOST}_${NS_REPO}`; // 例如 jl_username_github_io_casterselectionsystem
-        const KEY = `visits_${(location.pathname || '/').replace(/[^a-z0-9]/gi, '_') || 'index_html'}`;
+        // 访问统计系统配置
+        const VISITOR_CONFIG = {
+          // 动态生成命名空间，避免冲突
+          getNamespace: function() {
+            const host = (location.hostname || 'localhost').replace(/[^a-z0-9]/gi, '_');
+            const path = (location.pathname || '/').replace(/[^a-z0-9]/gi, '_');
+            return `jl_${host}_${path}`;
+          },
+          
+          // 计数器键名
+          COUNTER_KEY: 'total_visits',
+          TODAY_KEY: 'today_visits',
+          DEVICES_KEY: 'unique_devices',
+          
+          // API配置
+          API_BASE: 'https://api.countapi.xyz',
+          TIMEOUT: 10000,
+          RETRY_TIMES: 3,
+          RETRY_DELAY: 1000
+        };
 
-        function format(num){ try { return num.toLocaleString('zh-CN'); } catch(_) { return String(num); } }
-
-        // 每次访问/刷新都 +1（无去重）
-        const LS_CACHE = 'jl_visit_total_cache';
-
-        function writeCache(v){ try { localStorage.setItem(LS_CACHE, String(v)); } catch(_) {} }
-        function readCache(){ try { return parseInt(localStorage.getItem(LS_CACHE)||'0',10)||0; } catch(_) { return 0; } }
-
-        async function callCountApi(path){
-          const url = `https://api.countapi.xyz/${path}/${encodeURIComponent(NAMESPACE)}/${encodeURIComponent(KEY)}`;
-          const controller = new AbortController();
-          const t = setTimeout(() => controller.abort(), 6000);
-          const resp = await fetch(url, { cache: 'no-store', signal: controller.signal });
-          clearTimeout(t);
-          if (!resp.ok) throw new Error('HTTP '+resp.status);
-          return resp.json(); // {value:number}
-        }
-
-        async function run(){
-          // 先显示缓存，避免首屏空白
-          const cached = readCache();
-          if (cached > 0) POS.textContent = format(cached); else POS.textContent = '统计中…';
-          try {
-            let data;
+        // 访问统计核心类
+        class VisitorCounter {
+          constructor() {
+            this.namespace = VISITOR_CONFIG.getNamespace();
+            this.isInitialized = false;
+            this.cache = new Map();
+            this.counterElement = POS;
+            this.init();
+          }
+          
+          // 初始化
+          async init() {
             try {
-              data = await callCountApi('hit'); // 常规递增
-            } catch(e1) {
-              console.warn('hit 失败，尝试 get：', e1);
-              data = await callCountApi('get'); // 若命名空间或网络暂时问题，至少拉取现值
+              console.log('正在初始化跨设备访问统计系统...');
+              
+              // 记录本次访问
+              await this.recordVisit();
+              
+              // 获取并显示统计数据
+              await this.updateDisplay();
+              
+              // 设置定时更新
+              this.setupAutoUpdate();
+              
+              this.isInitialized = true;
+              console.log('跨设备访问统计系统已就绪');
+              
+            } catch (error) {
+              console.error('初始化失败:', error);
+              this.displayCachedData();
             }
-            const remote = parseInt(data && data.value || 0, 10) || 0; // 从0累计（第三方返回）
-            const total = BASE_OFFSET + remote; // 加基数
-            POS.textContent = format(total);
-            writeCache(total);
-          } catch (e) {
-            const fallback = readCache() || BASE_OFFSET;
-            POS.textContent = format(fallback);
-            console.warn('访问计数获取失败，使用缓存/基数兜底：', e);
-            console.warn('如一直为16000，说明第三方计数服务无法访问，请检查网络或更换命名空间/服务。');
+          }
+          
+          // 记录访问
+          async recordVisit() {
+            const deviceId = this.getDeviceId();
+            const timestamp = Date.now();
+            
+            try {
+              // 增加总访问次数
+              await this.incrementCounter(VISITOR_CONFIG.COUNTER_KEY);
+              
+              // 更新今日访问
+              await this.updateDailyStats();
+              
+              // 记录设备信息
+              await this.recordDevice(deviceId, timestamp);
+              
+              console.log('访问记录成功');
+              
+            } catch (error) {
+              console.error('记录访问失败:', error);
+              // 即使失败也继续执行，不影响页面显示
+            }
+          }
+          
+          // 增加计数器
+          async incrementCounter(key) {
+            const url = `${VISITOR_CONFIG.API_BASE}/hit/${this.namespace}/${key}`;
+            
+            for (let i = 0; i < VISITOR_CONFIG.RETRY_TIMES; i++) {
+              try {
+                const response = await this.fetchWithTimeout(url);
+                if (response.ok) {
+                  const data = await response.json();
+                  this.cache.set(key, data.value);
+                  return data.value;
+                }
+              } catch (error) {
+                console.warn(`第${i + 1}次尝试失败:`, error);
+                if (i < VISITOR_CONFIG.RETRY_TIMES - 1) {
+                  await this.delay(VISITOR_CONFIG.RETRY_DELAY);
+                }
+              }
+            }
+            
+            throw new Error(`增加计数器失败: ${key}`);
+          }
+          
+          // 获取计数器值
+          async getCounter(key) {
+            const url = `${VISITOR_CONFIG.API_BASE}/get/${this.namespace}/${key}`;
+            
+            try {
+              const response = await this.fetchWithTimeout(url);
+              if (response.ok) {
+                const data = await response.json();
+                this.cache.set(key, data.value);
+                return data.value;
+              }
+            } catch (error) {
+              console.error(`获取计数器失败: ${key}`, error);
+            }
+            
+            // 返回缓存值或默认值
+            return this.cache.get(key) || 0;
+          }
+          
+          // 更新每日统计
+          async updateDailyStats() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayKey = `${VISITOR_CONFIG.TODAY_KEY}_${today}`;
+            
+            try {
+              await this.incrementCounter(todayKey);
+            } catch (error) {
+              console.error('更新每日统计失败:', error);
+            }
+          }
+          
+          // 记录设备信息
+          async recordDevice(deviceId, timestamp) {
+            const deviceKey = `${VISITOR_CONFIG.DEVICES_KEY}_${deviceId}`;
+            
+            try {
+              // 检查设备是否已记录
+              const existing = await this.getCounter(deviceKey);
+              if (!existing) {
+                // 新设备，增加独立设备计数
+                await this.incrementCounter(VISITOR_CONFIG.DEVICES_KEY);
+              }
+              
+              // 更新设备最后访问时间
+              await this.setCounter(deviceKey, timestamp);
+              
+            } catch (error) {
+              console.error('记录设备信息失败:', error);
+            }
+          }
+          
+          // 设置计数器值
+          async setCounter(key, value) {
+            const url = `${VISITOR_CONFIG.API_BASE}/set/${this.namespace}/${key}/${value}`;
+            
+            try {
+              const response = await this.fetchWithTimeout(url);
+              if (response.ok) {
+                const data = await response.json();
+                this.cache.set(key, data.value);
+                return data.value;
+              }
+            } catch (error) {
+              console.error(`设置计数器失败: ${key}`, error);
+            }
+            
+            return value;
+          }
+          
+          // 获取设备ID
+          getDeviceId() {
+            let deviceId = localStorage.getItem('jl_visitor_device_id');
+            
+            if (!deviceId) {
+              // 生成唯一设备ID
+              deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+              localStorage.setItem('jl_visitor_device_id', deviceId);
+            }
+            
+            return deviceId;
+          }
+          
+          // 带超时的fetch
+          async fetchWithTimeout(url, options = {}) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), VISITOR_CONFIG.TIMEOUT);
+            
+            try {
+              const response = await fetch(url, {
+                ...options,
+                signal: controller.signal,
+                cache: 'no-store'
+              });
+              clearTimeout(timeoutId);
+              return response;
+            } catch (error) {
+              clearTimeout(timeoutId);
+              throw error;
+            }
+          }
+          
+          // 延迟函数
+          delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+          }
+          
+          // 格式化数字
+          formatNumber(num) {
+            try {
+              return num.toLocaleString('zh-CN');
+            } catch (_) {
+              return String(num);
+            }
+          }
+          
+          // 更新显示
+          async updateDisplay() {
+            try {
+              // 先显示缓存，避免首屏空白
+              const cached = this.cache.get(VISITOR_CONFIG.COUNTER_KEY) || 0;
+              if (cached > 0) {
+                this.updateCounterDisplay(cached + BASE_OFFSET);
+              } else {
+                this.updateCounterDisplay('统计中…');
+              }
+              
+              // 获取总访问次数
+              const totalVisits = await this.getCounter(VISITOR_CONFIG.COUNTER_KEY);
+              const displayValue = totalVisits + BASE_OFFSET;
+              this.updateCounterDisplay(displayValue);
+              
+              // 缓存到localStorage作为备用
+              this.writeCache(displayValue);
+              
+            } catch (error) {
+              console.error('更新显示失败:', error);
+              this.displayCachedData();
+            }
+          }
+          
+          // 更新计数器显示
+          updateCounterDisplay(value) {
+            if (this.counterElement) {
+              if (typeof value === 'number') {
+                this.counterElement.textContent = this.formatNumber(value);
+              } else {
+                this.counterElement.textContent = value;
+              }
+            }
+          }
+          
+          // 写入缓存
+          writeCache(value) {
+            try {
+              localStorage.setItem('jl_visit_total_cache', String(value));
+            } catch (_) {}
+          }
+          
+          // 读取缓存
+          readCache() {
+            try {
+              return parseInt(localStorage.getItem('jl_visit_total_cache') || '0', 10) || 0;
+            } catch (_) {
+              return 0;
+            }
+          }
+          
+          // 显示缓存数据
+          displayCachedData() {
+            const cached = this.readCache();
+            if (cached > 0) {
+              this.updateCounterDisplay(cached);
+            } else {
+              this.updateCounterDisplay(BASE_OFFSET);
+            }
+          }
+          
+          // 设置自动更新
+          setupAutoUpdate() {
+            // 每60秒更新一次显示
+            setInterval(() => {
+              if (this.isInitialized) {
+                this.updateDisplay();
+              }
+            }, 60000);
+            
+            // 页面可见性变化时更新
+            document.addEventListener('visibilitychange', () => {
+              if (!document.hidden && this.isInitialized) {
+                this.updateDisplay();
+              }
+            });
           }
         }
 
-        run();
+        // 初始化跨设备访问统计系统
+        window.visitorCounter = new VisitorCounter();
       })();
     </script>
 
