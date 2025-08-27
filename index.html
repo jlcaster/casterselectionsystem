@@ -14,8 +14,8 @@
     <script>
       // 更新为新的LeanCloud应用配置
       const VISITOR_CONFIG = {
-        AppId: "s1ElXHtFQO5FlOqFJ2nLX2L8-gzGzoHsz",
-        AppKey: "bT8sQEnJFE15P9xXQxo1aONN",
+        appId: "s1ElXHtFQO5FlOqFJ2nLX2L8-gzGzoHsz",
+        appKey: "bT8sQEnJFE15P9xXQxo1aONN",
         serverURL: "https://s1elxhtf.lc-cn-n1-shared.com"
       };
     </script>
@@ -2364,40 +2364,9 @@
       try { window.Site && typeof Site.sendBrowerInfo === 'function' && Site.sendBrowerInfo(false); } catch (e) {}
       try { window.Site && typeof Site.ajaxLogDog === 'function' && Site.ajaxLogDog(200002, 1); } catch (e) {}
 
-      // 完整访问统计系统：云端存储 + 后端API + 设备指纹识别
-      (function initCompleteVisitorCounter(){      
-        const BASE_OFFSET = 16000; // 起始基数
-        const POS = document.getElementById('visitor-counter-pos');
-        if (!POS) return;
-
-        // 完整访问统计系统配置
-        const VISITOR_CONFIG = {
-          // 固定命名空间，确保全局统一
-          NAMESPACE: 'jianglong_global_visitor_counter',
-          
-          // 计数器键名
-          GLOBAL_TOTAL_KEY: 'global_total_visits', // 全局总访问次数
-          DEVICE_VISITS_KEY: 'device_visits', // 设备访问次数
-          UNIQUE_DEVICES_KEY: 'unique_devices', // 独立设备数量
-          TODAY_VISITS_KEY: 'today_visits', // 今日访问次数
-          
-          // API配置
-          API_BASE: 'https://api.countapi.xyz',
-          BACKEND_API: '/api/track-visit', // 后端API端点
-          TIMEOUT: 8000, // 增加超时时间，确保稳定性
-          RETRY_TIMES: 3, // 增加重试次数
-          RETRY_DELAY: 1000 // 增加重试延迟
-        };
-
-        // 完整访问统计核心类
-        class CompleteVisitorCounter {
-          constructor() {
-            this.namespace = VISITOR_CONFIG.NAMESPACE;
-            this.isInitialized = false;
-            this.cache = new Map();
-            this.counterElement = POS;
-            this.networkAvailable = true; // 网络状态标记
-            this.backendAvailable = false; // 后端API可用性标记
+      // 访问统计系统已移除 countapi.xyz 相关代码
+      // 现在仅使用 LeanCloud 进行统计
+      console.log('访问统计系统已初始化 (仅使用 LeanCloud)');
             this.deviceId = null; // 设备唯一ID
             this.sessionId = null; // 会话ID（防止重复计数）
             this.browserInfo = null; // 浏览器信息
@@ -3156,27 +3125,27 @@ const VisitCounter = AV.Object.extend('VisitCounter');
 function updateVisitCount() {
   const query = new AV.Query(VisitCounter);
   
-  // 查询全局唯一计数器（固定ID）
-  query.get('global_visit_count')
-    .then(counter => {
-      // 计数器已存在，累加1
-      counter.increment('value', 1);
-      return counter.save();
-    })
-    .catch(error => {
-      // 首次访问时创建计数器
-      if (error.code === 101) {
+  // 查询总访问量记录
+  query.equalTo('type', 'total').find()
+    .then(results => {
+      if (results.length > 0) {
+        // 存在记录，直接递增计数
+        const counter = results[0];
+        counter.increment('count', 1); // 原子递增
+        return counter.save();
+      } else {
+        // 不存在记录，创建新记录
         const newCounter = new VisitCounter();
-        newCounter.set('objectId', 'global_visit_count'); // 固定ID确保全局唯一
-        newCounter.set('value', 1); // 初始值为1
+        newCounter.set('type', 'total');
+        newCounter.set('count', 1);
+        newCounter.set('lastUpdated', Date.now());
         return newCounter.save();
       }
-      console.error('获取计数器失败:', error);
     })
     .then(updatedCounter => {
       if (updatedCounter) {
         // 更新页面中的计数器元素
-        const count = updatedCounter.get('value');
+        const count = updatedCounter.get('count');
         const counterElement = document.getElementById('visitor-counter-pos');
         if (counterElement) {
           counterElement.textContent = count;
@@ -3184,7 +3153,7 @@ function updateVisitCount() {
       }
     })
     .catch(error => {
-      console.error('更新计数器失败:', error);
+      console.error('统计失败:', error);
     });
 }
 
