@@ -10,6 +10,7 @@
     <!-- 添加jQuery和LeanCloud脚本 -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- LeanCloud应用配置 -->
+    <!-- 统计脚本 -->
     <script>
       // 更新为新的LeanCloud应用配置
       const VISITOR_CONFIG = {
@@ -18,6 +19,25 @@
         serverURL: "https://s1elxhtf.lc-cn-n1-shared.com"
       };
       
+      // 确保DOM加载完成后再初始化LeanCloud
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof AV !== 'undefined') {
+          AV.init(VISITOR_CONFIG);
+          console.log('LeanCloud 初始化成功');
+        } else {
+          console.error('LeanCloud SDK加载失败');
+          // 尝试重新加载SDK
+          var script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js';
+          script.onload = function() {
+            if (typeof AV !== 'undefined') {
+              AV.init(VISITOR_CONFIG);
+              console.log('LeanCloud SDK重新加载并初始化成功');
+            }
+          };
+          document.head.appendChild(script);
+        }
+      });
 
     </script>
     <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
@@ -2349,34 +2369,35 @@
 
     <script>
       // 统一更新footer中的visitor-counter-pos（不再使用pv-count）
-      const counterElement = document.getElementById('visitor-counter-pos');
-      if (!counterElement) {
-        console.error('未找到footer中的访问量显示元素（visitor-counter-pos）');
-        return;
-      }
-
-      // 初始化显示加载中
-      counterElement.textContent = '加载中...';
-
-      // LeanCloud统计核心逻辑
-      if (typeof AV === 'undefined') {
-        console.warn('LeanCloud SDK未加载，使用本地统计');
-        try {
-          const pvKey = 'jl_visits';
-          let count = parseInt(localStorage.getItem(pvKey) || '0') + 1;
-          localStorage.setItem(pvKey, count);
-          counterElement.textContent = count.toLocaleString('zh-CN');
-        } catch (e) {
-          counterElement.textContent = '1'; // 内存临时计数
-          console.error('本地存储失败:', e);
+      document.addEventListener('DOMContentLoaded', function() {
+        const counterElement = document.getElementById('visitor-counter-pos');
+        if (!counterElement) {
+          console.error('未找到footer中的访问量显示元素（visitor-counter-pos）');
+          return;
         }
-        return;
-      }
 
-      // LeanCloud云端统计（关联VisitCounter表）
-      try {
-        const VisitCounter = AV.Object.extend('VisitCounter');
-        const query = new AV.Query(VisitCounter);
+        // 初始化显示加载中
+        counterElement.textContent = '加载中...';
+
+        // LeanCloud统计核心逻辑
+        if (typeof AV === 'undefined') {
+          console.warn('LeanCloud SDK未加载，使用本地统计');
+          try {
+            const pvKey = 'jl_visits';
+            let count = parseInt(localStorage.getItem(pvKey) || '0') + 1;
+            localStorage.setItem(pvKey, count);
+            counterElement.textContent = count.toLocaleString('zh-CN');
+          } catch (e) {
+            counterElement.textContent = '1'; // 内存临时计数
+            console.error('本地存储失败:', e);
+          }
+          return;
+        }
+
+        // LeanCloud云端统计（关联VisitCounter表）
+        try {
+          const VisitCounter = AV.Object.extend('VisitCounter');
+          const query = new AV.Query(VisitCounter);
 
         // 查总访问量记录，无则创建
         query.equalTo('type', 'total').first().then(record => {
@@ -2394,13 +2415,14 @@
           // 降级显示本地计数
           const localCount = parseInt(localStorage.getItem('jl_visits') || '0') + 1;
           localStorage.setItem('jl_visits', localCount);
-          counterElement.textContent = localCount.toLocaleString('zh-CN');
-        });
-      } catch (e) {
-        counterElement.textContent = '统计错误';
-        console.error('统计逻辑异常:', e);
-      }
-    </script>
+            counterElement.textContent = localCount.toLocaleString('zh-CN');
+          });
+        } catch (e) {
+          counterElement.textContent = '统计错误';
+          console.error('统计逻辑异常:', e);
+        }
+      });
+      </script>
 
 </body>
 
