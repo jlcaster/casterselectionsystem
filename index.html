@@ -16,24 +16,10 @@
       const VISITOR_CONFIG = {
         appId: "s1ElXHtFQO5FlOqFJ2nLX2L8-gzGzoHsz",
         appKey: "bT8sQEnJFE15P9xXQxo1aONN",
-        serverURL: "https://s1elxhtf.lc-cn-n1-shared.com",
-        // 计数器API配置
-        API_BASE: "https://api.countapi.xyz",
-        BACKEND_API: "https://api.countapi.xyz/visits",
-        // 计数器键名
-        GLOBAL_TOTAL_KEY: "total_visits",
-        DEVICE_VISITS_KEY: "device_visits",
-        UNIQUE_DEVICES_KEY: "unique_devices",
-        TODAY_VISITS_KEY: "today_visits",
-        TODAY_KEY: "daily_visits",
-        // 重试配置
-        RETRY_TIMES: 3,
-        RETRY_DELAY: 1000,
-        TIMEOUT: 10000
+        serverURL: "https://s1elxhtf.lc-cn-n1-shared.com"
       };
       
-      // 基础偏移量（用于显示）
-      const BASE_OFFSET = 1000000;
+
     </script>
     <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.0/dist/av-min.js"></script>
     <style>
@@ -2386,18 +2372,14 @@
       
       // 完整访问统计系统类
       class CompleteVisitorCounter {
-        constructor() {
-          this.deviceId = null; // 设备唯一ID
-          this.sessionId = null; // 会话ID（防止重复计数）
-          this.browserInfo = null; // 浏览器信息
-          this.networkAvailable = true; // 网络状态
-          this.backendAvailable = false; // 后端API状态
-          this.isInitialized = false; // 初始化状态
-          this.cache = new Map(); // 缓存
-          this.namespace = 'jianglongcaster'; // 命名空间
-          this.counterElement = document.getElementById('visitor-counter-pos'); // 计数器元素
-          this.init();
-        }
+                  constructor() {
+            this.deviceId = null; // 设备唯一ID
+            this.sessionId = null; // 会话ID（防止重复计数）
+            this.browserInfo = null; // 浏览器信息
+            this.isInitialized = false; // 初始化状态
+            this.counterElement = document.getElementById('visitor-counter-pos'); // 计数器元素
+            this.init();
+          }
           
           
           // 初始化完整访问统计
@@ -2418,22 +2400,9 @@
               // 获取设备唯一ID（跨浏览器识别）
               await this.getDeviceFingerprint();
               
-              // 检查网络连接和后端API
-              await this.checkNetworkStatus();
-              await this.checkBackendAPI();
-              
-              // 记录本次访问并更新统计
-              if (this.backendAvailable) {
-                // 优先使用后端API
-                await this.recordBackendVisit();
-              } else if (this.networkAvailable) {
-                // 使用云端统计
-                await this.recordGlobalVisit();
-                await this.updateGlobalDisplay();
-              } else {
-                console.log('网络不可用，使用本地统计模式');
-                this.useLocalCounter();
-              }
+              // 使用本地统计模式（LeanCloud 通过页面底部的脚本处理）
+              console.log('使用本地统计模式');
+              this.useLocalCounter();
               
               // 设置定时更新
               this.setupAutoUpdate();
@@ -2496,39 +2465,9 @@
             };
           }
           
-          // 检查网络状态
-          async checkNetworkStatus() {
-            try {
-              // 尝试连接全局计数器API
-              const testUrl = `${VISITOR_CONFIG.API_BASE}/get/${this.namespace}/${VISITOR_CONFIG.GLOBAL_TOTAL_KEY}`;
-              const response = await this.fetchWithTimeout(testUrl, { timeout: 5000 });
-              this.networkAvailable = response.ok;
-              console.log('网络连接正常');
-            } catch (error) {
-              console.warn('网络连接检查失败:', error);
-              this.networkAvailable = false;
-            }
-          }
+
           
-          // 检查后端API可用性
-          async checkBackendAPI() {
-            try {
-              // 尝试连接后端API
-              const response = await this.fetchWithTimeout(VISITOR_CONFIG.BACKEND_API, {
-                method: 'GET',
-                timeout: 3000
-              });
-              this.backendAvailable = response.ok;
-              if (this.backendAvailable) {
-                console.log('后端API可用，使用后端统计模式');
-              } else {
-                console.log('后端API不可用，使用云端统计模式');
-              }
-            } catch (error) {
-              console.warn('后端API检查失败，使用云端统计模式:', error);
-              this.backendAvailable = false;
-            }
-          }
+
           
           // 使用本地计数器（跨浏览器设备统计）
           useLocalCounter() {
@@ -2569,262 +2508,31 @@
             localStorage.setItem(sessionKey, '1');
             
             // 更新显示
-            const displayValue = BASE_OFFSET + localCount;
-            this.updateCounterDisplay(displayValue);
-            this.writeCache(displayValue);
+            this.updateCounterDisplay(localCount);
+            this.writeCache(localCount);
             
             console.log(`本地访问统计已更新，设备 ${deviceId} 累计访问次数: ${deviceVisits}`);
           }
           
-          // 记录后端访问（详细统计）
-          async recordBackendVisit() {
-            if (!this.backendAvailable) {
-              if (this.networkAvailable) {
-                await this.recordGlobalVisit();
-              } else {
-                this.useLocalCounter();
-              }
-              return;
-            }
-            
-            const deviceId = this.getDeviceId();
-            const timestamp = new Date().toISOString();
-            
-            try {
-              // 检查是否已经记录过本次会话
-              const sessionKey = `session_${this.sessionId}`;
-              const sessionRecorded = await this.getCounter(sessionKey);
-              
-              if (sessionRecorded > 0) {
-                console.log('本次会话已记录，跳过重复计数');
-                return;
-              }
-              
-              // 发送详细访问数据到后端
-              const visitData = {
-                deviceId: deviceId,
-                browser: this.browserInfo,
-                timestamp: timestamp,
-                sessionId: this.sessionId
-              };
-              
-              const response = await this.fetchWithTimeout(VISITOR_CONFIG.BACKEND_API, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(visitData)
-              });
-              
-              if (response.ok) {
-                const data = await response.json();
-                console.log('后端访问记录成功:', data);
-                
-                // 更新显示
-                this.updateBackendDisplay(data);
-                
-                // 标记本次会话已记录
-                await this.setCounter(sessionKey, 1);
-                
-              } else {
-                throw new Error('后端API响应错误');
-              }
-              
-            } catch (error) {
-              console.error('记录后端访问失败，切换到云端模式:', error);
-              this.backendAvailable = false;
-              if (this.networkAvailable) {
-                await this.recordGlobalVisit();
-              } else {
-                this.useLocalCounter();
-              }
-            }
-          }
-          
-          // 记录全局访问（跨浏览器、跨设备统计）
-          async recordGlobalVisit() {
-            if (!this.networkAvailable) {
-              this.useLocalCounter();
-              return;
-            }
-            
-            const deviceId = this.getDeviceId();
-            const timestamp = Date.now();
-            
-            try {
-              // 检查是否已经记录过本次会话
-              const sessionKey = `session_${this.sessionId}`;
-              const sessionRecorded = await this.getCounter(sessionKey);
-              
-              if (sessionRecorded > 0) {
-                console.log('本次会话已记录，跳过重复计数');
-                return;
-              }
-              
-              // 1. 增加全局总访问次数
-              await this.incrementCounter(VISITOR_CONFIG.GLOBAL_TOTAL_KEY);
-              
-              // 2. 记录设备访问次数
-              await this.recordDeviceVisit(deviceId, timestamp);
-              
-              // 3. 更新独立设备数量
-              await this.updateUniqueDevices(deviceId);
-              
-              // 4. 更新今日访问次数
-              await this.updateTodayVisits();
-              
-              // 5. 标记本次会话已记录
-              await this.setCounter(sessionKey, 1);
-              
-              console.log('全局访问记录成功，设备ID:', deviceId);
-              
-            } catch (error) {
-              console.error('记录全局访问失败，切换到本地模式:', error);
-              this.networkAvailable = false;
-              this.useLocalCounter();
-            }
-          }
-          
-          // 记录设备访问（跨浏览器累加）
-          async recordDeviceVisit(deviceId, timestamp) {
-            try {
-              // 设备访问次数键名
-              const deviceVisitsKey = `${VISITOR_CONFIG.DEVICE_VISITS_KEY}_${deviceId}`;
-              
-              // 获取设备当前访问次数
-              let deviceVisits = await this.getCounter(deviceVisitsKey);
-              if (!deviceVisits) {
-                deviceVisits = 0;
-              }
-              
-              // 增加设备访问次数
-              deviceVisits++;
-              await this.setCounter(deviceVisitsKey, deviceVisits);
-              
-              // 记录设备最后访问时间
-              const deviceTimeKey = `device_time_${deviceId}`;
-              await this.setCounter(deviceTimeKey, timestamp);
-              
-              console.log(`设备 ${deviceId} 累计访问次数: ${deviceVisits}`);
-              
-            } catch (error) {
-              console.error('记录设备访问失败:', error);
-            }
-          }
-          
-          // 更新独立设备数量
-          async updateUniqueDevices(deviceId) {
-            try {
-              // 检查设备是否已记录
-              const deviceRecordKey = `device_record_${deviceId}`;
-              const deviceRecorded = await this.getCounter(deviceRecordKey);
-              
-              if (!deviceRecorded) {
-                // 新设备，增加独立设备计数
-                await this.incrementCounter(VISITOR_CONFIG.UNIQUE_DEVICES_KEY);
-                await this.setCounter(deviceRecordKey, 1);
-                console.log('新增独立设备:', deviceId);
-              }
-            } catch (error) {
-              console.error('更新独立设备数量失败:', error);
-            }
-          }
-          
-          // 更新今日访问次数
-          async updateTodayVisits() {
-            try {
-              const today = new Date().toISOString().split('T')[0];
-              const todayKey = `${VISITOR_CONFIG.TODAY_VISITS_KEY}_${today}`;
-              await this.incrementCounter(todayKey);
-            } catch (error) {
-              console.error('更新今日访问次数失败:', error);
-            }
-          }
-          
-          // 增加计数器
-          async incrementCounter(key) {
-            const url = `${VISITOR_CONFIG.API_BASE}/hit/${this.namespace}/${key}`;
-            
-            for (let i = 0; i < VISITOR_CONFIG.RETRY_TIMES; i++) {
-              try {
-                const response = await this.fetchWithTimeout(url);
-                if (response.ok) {
-                  const data = await response.json();
-                  this.cache.set(key, data.value);
-                  return data.value;
-                }
-              } catch (error) {
-                console.warn(`第${i + 1}次尝试失败:`, error);
-                if (i < VISITOR_CONFIG.RETRY_TIMES - 1) {
-                  await this.delay(VISITOR_CONFIG.RETRY_DELAY);
-                }
-              }
-            }
-            
-            throw new Error(`增加计数器失败: ${key}`);
-          }
-          
-          // 获取计数器值
-          async getCounter(key) {
-            if (!this.networkAvailable) {
-              // 网络不可用时返回本地缓存
-              return this.cache.get(key) || this.readCache() - BASE_OFFSET || 0;
-            }
-            
-            const url = `${VISITOR_CONFIG.API_BASE}/get/${this.namespace}/${key}`;
-            
-            try {
-              const response = await this.fetchWithTimeout(url);
-              if (response.ok) {
-                const data = await response.json();
-                this.cache.set(key, data.value);
-                return data.value;
-              }
-            } catch (error) {
-              console.error(`获取计数器失败: ${key}`, error);
-              // 网络失败时切换到本地模式
-              this.networkAvailable = false;
-            }
-            
-            // 返回缓存值或默认值
-            return this.cache.get(key) || 0;
-          }
-          
-          // 更新每日统计
-          async updateDailyStats() {
-            if (!this.networkAvailable) return;
-            
-            const today = new Date().toISOString().split('T')[0];
-            const todayKey = `${VISITOR_CONFIG.TODAY_KEY}_${today}`;
-            
-            try {
-              await this.incrementCounter(todayKey);
-            } catch (error) {
-              console.error('更新每日统计失败:', error);
-            }
-          }
+
           
 
           
-          // 设置计数器值
-          async setCounter(key, value) {
-            if (!this.networkAvailable) return value;
-            
-            const url = `${VISITOR_CONFIG.API_BASE}/set/${this.namespace}/${key}/${value}`;
-            
-            try {
-              const response = await this.fetchWithTimeout(url);
-              if (response.ok) {
-                const data = await response.json();
-                this.cache.set(key, data.value);
-                return data.value;
-              }
-            } catch (error) {
-              console.error(`设置计数器失败: ${key}`, error);
-            }
-            
-            return value;
-          }
+
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+
           
           // 获取设备指纹（跨浏览器识别）
           async getDeviceFingerprint() {
@@ -2900,31 +2608,7 @@
             return this.deviceId || this.generateFallbackDeviceId();
           }
           
-          // 带超时的fetch
-          async fetchWithTimeout(url, options = {}) {
-            const controller = new AbortController();
-            const timeout = options.timeout || VISITOR_CONFIG.TIMEOUT;
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-            
-            try {
-              const response = await fetch(url, {
-                ...options,
-                signal: controller.signal,
-                cache: 'no-store',
-                mode: 'cors'
-              });
-              clearTimeout(timeoutId);
-              return response;
-            } catch (error) {
-              clearTimeout(timeoutId);
-              throw error;
-            }
-          }
-          
-          // 延迟函数
-          delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-          }
+
           
           // 格式化数字
           formatNumber(num) {
@@ -2935,95 +2619,11 @@
             }
           }
           
-          // 更新全局显示
-          async updateGlobalDisplay() {
-            try {
-              if (!this.networkAvailable) {
-                // 网络不可用时使用本地数据
-                const localCount = parseInt(localStorage.getItem('jl_local_visits') || '0', 10);
-                const displayValue = BASE_OFFSET + localCount;
-                this.updateCounterDisplay(displayValue);
-                this.writeCache(displayValue);
-                return;
-              }
-              
-              // 先显示缓存，避免首屏空白
-              const cached = this.cache.get(VISITOR_CONFIG.GLOBAL_TOTAL_KEY) || 0;
-              if (cached > 0) {
-                this.updateCounterDisplay(cached + BASE_OFFSET);
-              } else {
-                this.updateCounterDisplay('统计中…');
-              }
-              
-              // 获取全局总访问次数
-              const globalTotal = await this.getCounter(VISITOR_CONFIG.GLOBAL_TOTAL_KEY);
-              const displayValue = globalTotal + BASE_OFFSET;
-              this.updateCounterDisplay(displayValue);
-              
-              // 缓存到localStorage作为备用
-              this.writeCache(displayValue);
-              
-              // 获取并显示详细统计信息
-              await this.displayDetailedStats();
-              
-            } catch (error) {
-              console.error('更新全局显示失败:', error);
-              this.displayCachedData();
-            }
-          }
+
           
-          // 更新后端显示
-          updateBackendDisplay(data) {
-            try {
-              if (data.success) {
-                const displayValue = BASE_OFFSET + data.totalVisits;
-                this.updateCounterDisplay(displayValue);
-                this.writeCache(displayValue);
-                
-                console.log('=== 后端访问统计详情 ===');
-                console.log('总访问次数:', data.totalVisits);
-                console.log('设备总数:', data.totalDevices);
-                console.log('本设备访问次数:', data.deviceVisits);
-                console.log('本设备使用浏览器数:', data.deviceBrowsers);
-                console.log('当前浏览器:', this.browserInfo.name, this.browserInfo.version);
-                console.log('操作系统:', this.browserInfo.os);
-                console.log('========================');
-              }
-            } catch (error) {
-              console.error('更新后端显示失败:', error);
-            }
-          }
+
           
-          // 显示详细统计信息
-          async displayDetailedStats() {
-            try {
-              if (!this.deviceId) return;
-              
-              // 获取设备访问次数
-              const deviceVisitsKey = `${VISITOR_CONFIG.DEVICE_VISITS_KEY}_${this.deviceId}`;
-              const deviceVisits = await this.getCounter(deviceVisitsKey);
-              
-              // 获取独立设备数量
-              const uniqueDevices = await this.getCounter(VISITOR_CONFIG.UNIQUE_DEVICES_KEY);
-              
-              // 获取今日访问次数
-              const today = new Date().toISOString().split('T')[0];
-              const todayKey = `${VISITOR_CONFIG.TODAY_VISITS_KEY}_${today}`;
-              const todayVisits = await this.getCounter(todayKey);
-              
-              console.log('=== 全局访问统计详情 ===');
-              console.log('当前设备ID:', this.deviceId);
-              console.log('当前设备累计访问次数:', deviceVisits || 0);
-              console.log('独立设备总数:', uniqueDevices || 0);
-              console.log('今日访问次数:', todayVisits || 0);
-              console.log('当前浏览器:', this.browserInfo.name, this.browserInfo.version);
-              console.log('操作系统:', this.browserInfo.os);
-              console.log('========================');
-              
-            } catch (error) {
-              console.error('获取详细统计信息失败:', error);
-            }
-          }
+
           
           // 更新计数器显示
           updateCounterDisplay(value) {
@@ -3058,23 +2658,16 @@
             if (cached > 0) {
               this.updateCounterDisplay(cached);
             } else {
-              this.updateCounterDisplay(BASE_OFFSET);
+              this.updateCounterDisplay(0);
             }
           }
           
           // 设置自动更新
           setupAutoUpdate() {
-            // 每180秒更新一次显示（减少频率，提高稳定性）
-            setInterval(() => {
-              if (this.isInitialized) {
-                this.updateGlobalDisplay();
-              }
-            }, 180000);
-            
-            // 页面可见性变化时更新
+            // 页面可见性变化时更新本地计数
             document.addEventListener('visibilitychange', () => {
               if (!document.hidden && this.isInitialized) {
-                this.updateGlobalDisplay();
+                this.displayCachedData();
               }
             });
           }
@@ -3089,9 +2682,6 @@
             console.log('=== 完整访问统计调试信息 ===');
             console.log('设备ID:', window.visitorCounter.deviceId);
             console.log('会话ID:', window.visitorCounter.sessionId);
-            console.log('命名空间:', window.visitorCounter.namespace);
-            console.log('网络状态:', window.visitorCounter.networkAvailable ? '在线' : '离线');
-            console.log('后端API状态:', window.visitorCounter.backendAvailable ? '可用' : '不可用');
             console.log('浏览器信息:', window.visitorCounter.browserInfo);
             
             // 显示本地存储的设备访问信息
