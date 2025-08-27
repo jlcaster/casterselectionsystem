@@ -6,8 +6,7 @@
     <title>江龙脚轮选型系统 - FABE话术生成器</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <!-- 设备指纹库 - 用于跨浏览器设备识别 -->
-    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+
     <!-- 添加jQuery和LeanCloud脚本 -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- LeanCloud应用配置 -->
@@ -21,7 +20,7 @@
       
 
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.0/dist/av-min.js"></script>
+    <script src="//code.bdstatic.com/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
     <style>
         * {
             margin: 0;
@@ -2370,356 +2369,47 @@
       // 现在仅使用 LeanCloud 进行统计
       console.log('访问统计系统已初始化 (仅使用 LeanCloud)');
       
-      // 完整访问统计系统类
-      class CompleteVisitorCounter {
-                  constructor() {
-            this.deviceId = null; // 设备唯一ID
-            this.sessionId = null; // 会话ID（防止重复计数）
-            this.browserInfo = null; // 浏览器信息
-            this.isInitialized = false; // 初始化状态
-            this.counterElement = document.getElementById('visitor-counter-pos'); // 计数器元素
-            this.init();
-          }
-          
-          
-          // 初始化完整访问统计
-          async init() {
+    </script>
 
-            try {
-              console.log('正在初始化完整访问统计系统...');
-              
-              // 生成会话ID，防止重复计数
-              this.sessionId = this.generateSessionId();
-              
-              // 获取浏览器信息
-              this.browserInfo = this.getBrowserInfo();
-              
-              // 先显示缓存数据，避免空白
-              this.displayCachedData();
-              
-              // 获取设备唯一ID（跨浏览器识别）
-              await this.getDeviceFingerprint();
-              
-              // 使用本地统计模式（LeanCloud 通过页面底部的脚本处理）
-              console.log('使用本地统计模式');
-              this.useLocalCounter();
-              
-              // 设置定时更新
-              this.setupAutoUpdate();
-              
-              this.isInitialized = true;
-              console.log('完整访问统计系统已就绪');
-              
-            } catch (error) {
-              console.error('初始化失败:', error);
-              this.useLocalCounter();
-            }
-          }
+    <!-- 极简PV统计：结合LeanCloud实现，带本地降级 -->
+    <script>
+      // 检测LeanCloud是否加载成功
+      if (typeof AV === 'undefined') {
+        console.warn('LeanCloud CDN加载失败，已切换为本地统计模式');
+        
+        // 纯本地存储实现
+        try {
+          const pvKey = 'jl_total_visits';
+          let count = parseInt(localStorage.getItem(pvKey) || '0') + 1;
+          localStorage.setItem(pvKey, count);
           
-          // 生成会话ID
-          generateSessionId() {
-            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-          }
-          
-          // 获取浏览器信息
-          getBrowserInfo() {
-            const userAgent = navigator.userAgent;
-            
-            // 获取浏览器名称
-            let browserName = 'Unknown';
-            if (userAgent.indexOf('Chrome') > -1) browserName = 'Chrome';
-            else if (userAgent.indexOf('Firefox') > -1) browserName = 'Firefox';
-            else if (userAgent.indexOf('Safari') > -1 && userAgent.indexOf('Chrome') === -1) browserName = 'Safari';
-            else if (userAgent.indexOf('Edge') > -1) browserName = 'Edge';
-            else if (userAgent.indexOf('MSIE') > -1 || userAgent.indexOf('Trident') > -1) browserName = 'IE';
-            
-            // 获取浏览器版本
-            let browserVersion = 'Unknown';
-            if (userAgent.indexOf('Chrome') > -1) {
-              const match = userAgent.match(/Chrome\/(\d+\.\d+)/);
-              browserVersion = match ? match[1] : 'Unknown';
-            } else if (userAgent.indexOf('Firefox') > -1) {
-              const match = userAgent.match(/Firefox\/(\d+\.\d+)/);
-              browserVersion = match ? match[1] : 'Unknown';
-            } else if (userAgent.indexOf('Safari') > -1 && userAgent.indexOf('Chrome') === -1) {
-              const match = userAgent.match(/Version\/(\d+\.\d+)/);
-              browserVersion = match ? match[1] : 'Unknown';
-            } else if (userAgent.indexOf('Edge') > -1) {
-              const match = userAgent.match(/Edge\/(\d+\.\d+)/);
-              browserVersion = match ? match[1] : 'Unknown';
-            }
-            
-            // 获取操作系统
-            let os = 'Unknown';
-            if (userAgent.indexOf('Win') > -1) os = 'Windows';
-            else if (userAgent.indexOf('Mac') > -1) os = 'MacOS';
-            else if (userAgent.indexOf('Linux') > -1) os = 'Linux';
-            else if (userAgent.indexOf('Android') > -1) os = 'Android';
-            else if (userAgent.indexOf('iPhone') > -1 || userAgent.indexOf('iPad') > -1) os = 'iOS';
-            
-            return {
-              name: browserName,
-              version: browserVersion,
-              os: os,
-              userAgent: userAgent
-            };
-          }
-          
-
-          
-
-          
-          // 使用本地计数器（跨浏览器设备统计）
-          useLocalCounter() {
-            const deviceId = this.getDeviceId();
-            const today = new Date().toISOString().split('T')[0];
-            const todayKey = `local_${today}`;
-            
-            // 检查是否已经记录过本次会话
-            const sessionKey = `local_session_${this.sessionId}`;
-            const sessionRecorded = localStorage.getItem(sessionKey);
-            
-            if (sessionRecorded) {
-              console.log('本次会话已记录，跳过重复计数');
-              return;
-            }
-            
-            // 增加本地总访问计数
-            let localCount = parseInt(localStorage.getItem('jl_local_visits') || '0', 10);
-            localCount++;
-            localStorage.setItem('jl_local_visits', String(localCount));
-            
-            // 记录设备访问次数（跨浏览器累加）
-            const deviceVisitsKey = `local_device_visits_${deviceId}`;
-            let deviceVisits = parseInt(localStorage.getItem(deviceVisitsKey) || '0', 10);
-            deviceVisits++;
-            localStorage.setItem(deviceVisitsKey, String(deviceVisits));
-            
-            // 记录今日访问
-            let todayCount = parseInt(localStorage.getItem(todayKey) || '0', 10);
-            todayCount++;
-            localStorage.setItem(todayKey, String(todayCount));
-            
-            // 记录设备最后访问时间
-            const deviceTimeKey = `local_device_time_${deviceId}`;
-            localStorage.setItem(deviceTimeKey, Date.now().toString());
-            
-            // 标记本次会话已记录
-            localStorage.setItem(sessionKey, '1');
-            
-            // 更新显示
-            this.updateCounterDisplay(localCount);
-            this.writeCache(localCount);
-            
-            console.log(`本地访问统计已更新，设备 ${deviceId} 累计访问次数: ${deviceVisits}`);
-          }
-          
-
-          
-
-          
-
-          
-
-          
-
-          
-
-          
-
-          
-
-          
-
-          
-
-          
-          // 获取设备指纹（跨浏览器识别）
-          async getDeviceFingerprint() {
-            try {
-              // 检查是否已有缓存的设备ID
-              let deviceId = localStorage.getItem('jl_device_fingerprint');
-              
-              if (!deviceId) {
-                // 使用FingerprintJS生成设备指纹
-                if (typeof FingerprintJS !== 'undefined') {
-                  const fp = await FingerprintJS.load();
-                  const result = await fp.get();
-                  deviceId = result.visitorId;
-                  
-                  // 缓存设备指纹
-                  localStorage.setItem('jl_device_fingerprint', deviceId);
-                  console.log('设备指纹已生成:', deviceId);
-                } else {
-                  // 降级方案：使用传统方法生成设备ID
-                  deviceId = this.generateFallbackDeviceId();
-                  localStorage.setItem('jl_device_fingerprint', deviceId);
-                  console.log('使用降级方案生成设备ID:', deviceId);
-                }
-              }
-              
-              this.deviceId = deviceId;
-              console.log('当前设备ID:', deviceId);
-              return deviceId;
-              
-            } catch (error) {
-              console.error('获取设备指纹失败:', error);
-              // 降级方案
-              this.deviceId = this.generateFallbackDeviceId();
-              return this.deviceId;
-            }
-          }
-          
-          // 降级方案：生成设备ID
-          generateFallbackDeviceId() {
-            // 基于浏览器特征生成相对稳定的ID
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.textBaseline = 'top';
-            ctx.font = '14px Arial';
-            ctx.fillText('设备指纹测试', 2, 2);
-            
-            const canvasFingerprint = canvas.toDataURL();
-            
-            // 收集设备特征
-            const features = [
-              navigator.userAgent,
-              navigator.language,
-              screen.width + 'x' + screen.height,
-              new Date().getTimezoneOffset(),
-              navigator.hardwareConcurrency || 'unknown',
-              navigator.deviceMemory || 'unknown',
-              canvasFingerprint.substring(0, 50)
-            ].join('|');
-            
-            // 生成哈希
-            let hash = 0;
-            for (let i = 0; i < features.length; i++) {
-              const char = features.charCodeAt(i);
-              hash = ((hash << 5) - hash) + char;
-              hash = hash & hash; // 转换为32位整数
-            }
-            
-            return 'device_' + Math.abs(hash).toString(36);
-          }
-          
-          // 获取设备ID（兼容旧方法）
-          getDeviceId() {
-            return this.deviceId || this.generateFallbackDeviceId();
-          }
-          
-
-          
-          // 格式化数字
-          formatNumber(num) {
-            try {
-              return num.toLocaleString('zh-CN');
-            } catch (_) {
-              return String(num);
-            }
-          }
-          
-
-          
-
-          
-
-          
-          // 更新计数器显示
-          updateCounterDisplay(value) {
-            if (this.counterElement) {
-              if (typeof value === 'number') {
-                this.counterElement.textContent = this.formatNumber(value);
-              } else {
-                this.counterElement.textContent = value;
-              }
-            }
-          }
-          
-          // 写入缓存
-          writeCache(value) {
-            try {
-              localStorage.setItem('jl_visit_total_cache', String(value));
-            } catch (_) {}
-          }
-          
-          // 读取缓存
-          readCache() {
-            try {
-              return parseInt(localStorage.getItem('jl_visit_total_cache') || '0', 10) || 0;
-            } catch (_) {
-              return 0;
-            }
-          }
-          
-          // 显示缓存数据
-          displayCachedData() {
-            const cached = this.readCache();
-            if (cached > 0) {
-              this.updateCounterDisplay(cached);
-            } else {
-              this.updateCounterDisplay(0);
-            }
-          }
-          
-          // 设置自动更新
-          setupAutoUpdate() {
-            // 页面可见性变化时更新本地计数
-            document.addEventListener('visibilitychange', () => {
-              if (!document.hidden && this.isInitialized) {
-                this.displayCachedData();
-              }
-            });
-          }
+          // 渲染到页面
+          document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('visitor-counter-pos')?.textContent = count;
+          });
+        } catch (e) {
+          console.error('本地存储操作失败，使用内存临时计数');
+          // 内存临时计数（页面刷新后重置）
+          let tempCount = 1;
+          document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('visitor-counter-pos')?.textContent = tempCount;
+          });
         }
-        
-        // 初始化完整访问统计系统
-        window.visitorCounter = new CompleteVisitorCounter();
-        
-        // 调试功能：在控制台显示设备信息
-        setTimeout(() => {
-          if (window.visitorCounter && window.visitorCounter.deviceId) {
-            console.log('=== 完整访问统计调试信息 ===');
-            console.log('设备ID:', window.visitorCounter.deviceId);
-            console.log('会话ID:', window.visitorCounter.sessionId);
-            console.log('浏览器信息:', window.visitorCounter.browserInfo);
-            
-            // 显示本地存储的设备访问信息
-            const deviceId = window.visitorCounter.deviceId;
-            const localDeviceVisits = localStorage.getItem(`local_device_visits_${deviceId}`);
-            if (localDeviceVisits) {
-              console.log('本地设备累计访问次数:', localDeviceVisits);
-            }
-            
-            console.log('=====================================');
-          }
-        }, 3000);
-        
-        // 测试功能：手动触发访问统计（用于调试）
-        window.testVisitorCounter = function() {
-          if (window.visitorCounter) {
-            console.log('=== 手动测试访问统计 ===');
-            console.log('当前设备ID:', window.visitorCounter.deviceId);
-            console.log('当前会话ID:', window.visitorCounter.sessionId);
-            console.log('浏览器信息:', window.visitorCounter.browserInfo);
-            
-            // 清除会话记录，允许重新计数
-            const sessionKey = `session_${window.visitorCounter.sessionId}`;
-            localStorage.removeItem(sessionKey);
-            localStorage.removeItem(`local_session_${window.visitorCounter.sessionId}`);
-            
-            // 重新初始化
-            window.visitorCounter.init();
-            
-            console.log('测试完成，请查看控制台输出');
-          } else {
-            console.error('访问统计系统未初始化');
-          }
-        };
-        
-        // 在控制台输入 testVisitorCounter() 可以手动测试
-        console.log('提示：在控制台输入 testVisitorCounter() 可以手动测试访问统计功能');
-        window.visitorCounter.init();
+      } else {
+        // LeanCloud加载成功，使用本地存储+云端备份
+        try {
+          const pvKey = 'simple_pv';
+          let count = parseInt(localStorage.getItem(pvKey) || '0') + 1;
+          localStorage.setItem(pvKey, count);
+          
+          // 渲染到页面
+          document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('visitor-counter-pos')?.textContent = count;
+          });
+        } catch (e) {
+          console.error('本地存储操作失败，直接使用云端计数');
+        }
+      }
     </script>
 
 </body>
@@ -2739,44 +2429,43 @@ AV.init({
 // 绑定到VisitCounter表
 const VisitCounter = AV.Object.extend('VisitCounter');
 
-// 更新并显示全局访问次数
-function updateVisitCount() {
-  const query = new AV.Query(VisitCounter);
-  
-  // 查询总访问量记录
-  query.equalTo('type', 'total').find()
-    .then(results => {
-      if (results.length > 0) {
-        // 存在记录，直接递增计数
-        const counter = results[0];
-        counter.increment('count', 1); // 原子递增
-        return counter.save();
-      } else {
-        // 不存在记录，创建新记录
-        const newCounter = new VisitCounter();
-        newCounter.set('type', 'total');
-        newCounter.set('count', 1);
-        newCounter.set('lastUpdated', Date.now());
-        return newCounter.save();
-      }
-    })
-    .then(updatedCounter => {
-      if (updatedCounter) {
-        // 更新页面中的计数器元素
-        const count = updatedCounter.get('count');
-        const counterElement = document.getElementById('visitor-counter-pos');
-        if (counterElement) {
-          counterElement.textContent = count;
-        }
-      }
-    })
-    .catch(error => {
-      console.error('统计失败:', error);
-    });
+// 云端统计备份（仅在LeanCloud加载成功时执行）
+function backupToCloud() {
+  if (typeof AV !== 'undefined') {
+    try {
+      const query = new AV.Query(VisitCounter);
+      
+      // 查询总访问量记录
+      query.equalTo('type', 'total').find()
+        .then(results => {
+          if (results.length > 0) {
+            // 存在记录，直接递增计数
+            const counter = results[0];
+            counter.increment('count', 1); // 原子递增
+            return counter.save();
+          } else {
+            // 不存在记录，创建新记录
+            const newCounter = new VisitCounter();
+            newCounter.set('type', 'total');
+            newCounter.set('count', 1);
+            newCounter.set('lastUpdated', Date.now());
+            return newCounter.save();
+          }
+        })
+        .then(updatedCounter => {
+          console.log('云端统计备份成功');
+        })
+        .catch(error => {
+          console.error('云端统计备份失败:', error);
+        });
+    } catch (e) {
+      console.error('云端统计备份异常:', e);
+    }
+  }
 }
 
-// 页面加载完成后执行
-window.addEventListener('load', updateVisitCount);
+// 页面加载完成后执行云端备份
+window.addEventListener('load', backupToCloud);
 </script>
 
 </html>
