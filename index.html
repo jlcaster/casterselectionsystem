@@ -16,8 +16,24 @@
       const VISITOR_CONFIG = {
         appId: "s1ElXHtFQO5FlOqFJ2nLX2L8-gzGzoHsz",
         appKey: "bT8sQEnJFE15P9xXQxo1aONN",
-        serverURL: "https://s1elxhtf.lc-cn-n1-shared.com"
+        serverURL: "https://s1elxhtf.lc-cn-n1-shared.com",
+        // 计数器API配置
+        API_BASE: "https://api.countapi.xyz",
+        BACKEND_API: "https://api.countapi.xyz/visits",
+        // 计数器键名
+        GLOBAL_TOTAL_KEY: "total_visits",
+        DEVICE_VISITS_KEY: "device_visits",
+        UNIQUE_DEVICES_KEY: "unique_devices",
+        TODAY_VISITS_KEY: "today_visits",
+        TODAY_KEY: "daily_visits",
+        // 重试配置
+        RETRY_TIMES: 3,
+        RETRY_DELAY: 1000,
+        TIMEOUT: 10000
       };
+      
+      // 基础偏移量（用于显示）
+      const BASE_OFFSET = 1000000;
     </script>
     <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.0/dist/av-min.js"></script>
     <style>
@@ -1049,7 +1065,7 @@
                 <div class="contact-card">
                     <h3><i class="fas fa-globe"></i> 网站资源</h3>
                     <div class="contact-info">
-                        <p>官网: <a href="http://www.jianglongcaster.com" target="_blank">www.jianglongcaster.com</a></p>
+                        <p>官网: <a href="https://www.jianglongcaster.com" target="_blank">www.jianglongcaster.com</a></p>
                         <p>WEB 3D交互平台: <a href="https://www.casterpartner.com" target="_blank">www.casterpartner.com</a></p>
                         <p class="highlight">江龙精密脚轮开放全系产品STEP/IGES三维模型下载，提供非标脚轮数字孪生服务，诚邀客商对接江龙全新WEB 3D交互模块，实现可视化决策闭环，加速订单成交。</p>
                         <p>Jianglong Precision Casters now offers open downloads of STEP/IGES 3D models for its full product line and provides digital twin services for custom caster solutions. We invite partners to explore Jianglong's all-new WEB 3D interactive module, enabling visual decision-making loops to accelerate order conversion.</p>
@@ -1069,13 +1085,13 @@
 
                     <!-- 官方网站二维码 -->
                     <div class="qr-item">
-                        <img src="http://11112263.s21i.faimallusr.com/4/ABUIABAEGAAgq7G8wwYorraI5gMwyAM4zAM.png" alt="江龙精密脚轮官网" class="qr-img" onerror="handleImageError(this, 'images/website-fallback.png')">
+                        <img src="https://11112263.s21i.faimallusr.com/4/ABUIABAEGAAgq7G8wwYorraI5gMwyAM4zAM.png" alt="江龙精密脚轮官网" class="qr-img" onerror="handleImageError(this, 'images/website-fallback.png')">
                         <div class="qr-text">江龙精密脚轮官网</div>
                     </div>
 
                     <!-- 3D交互平台二维码 -->
                     <div class="qr-item">
-                        <img src="http://11112263.s21i.faimallusr.com/4/ABUIABAEGAAgq7G8wwYo_tWz9AIwyAM4vgM.png" alt="WEB 3D交互平台" class="qr-img" onerror="handleImageError(this, 'images/3d-fallback.png')">
+                        <img src="https://11112263.s21i.faimallusr.com/4/ABUIABAEGAAgq7G8wwYo_tWz9AIwyAM4vgM.png" alt="WEB 3D交互平台" class="qr-img" onerror="handleImageError(this, 'images/3d-fallback.png')">
                         <div class="qr-text">WEB 3D交互平台</div>
                     </div>
                 </div>
@@ -2344,12 +2360,12 @@
     </script>
 
     <!-- 访问计数：依赖脚本与全局参数 -->
-    <script type="text/javascript" src="//1ms.508mallsys.com/js/dist/frontend.min.js"></script>
-    <script type="text/javascript" src="//1ms.508mallsys.com/js/dist/monitor.min.js"></script>
+    <script type="text/javascript" src="https://1ms.508mallsys.com/js/dist/frontend.min.js"></script>
+    <script type="text/javascript" src="https://1ms.508mallsys.com/js/dist/monitor.min.js"></script>
     <script>
       // 最小化全局配置（与 jsq.html 保持一致字段名）
       window._aid = 11112263; // 站点标识
-      window._siteDomain = '//www.jianglongcaster.com';
+      window._siteDomain = 'https://www.jianglongcaster.com';
       window.statId = (typeof window.statId !== 'undefined') ? window.statId : -1;
       // 目标页面栏目ID（如需按页维度细分可替换此值），产品详情可把 pdId 改成实际产品ID
       const pageColId = 12;
@@ -2367,14 +2383,26 @@
       // 访问统计系统已移除 countapi.xyz 相关代码
       // 现在仅使用 LeanCloud 进行统计
       console.log('访问统计系统已初始化 (仅使用 LeanCloud)');
-            this.deviceId = null; // 设备唯一ID
-            this.sessionId = null; // 会话ID（防止重复计数）
-            this.browserInfo = null; // 浏览器信息
-            this.init();
-          }
+      
+      // 完整访问统计系统类
+      class CompleteVisitorCounter {
+        constructor() {
+          this.deviceId = null; // 设备唯一ID
+          this.sessionId = null; // 会话ID（防止重复计数）
+          this.browserInfo = null; // 浏览器信息
+          this.networkAvailable = true; // 网络状态
+          this.backendAvailable = false; // 后端API状态
+          this.isInitialized = false; // 初始化状态
+          this.cache = new Map(); // 缓存
+          this.namespace = 'jianglongcaster'; // 命名空间
+          this.counterElement = document.getElementById('visitor-counter-pos'); // 计数器元素
+          this.init();
+        }
+          
           
           // 初始化完整访问统计
           async init() {
+
             try {
               console.log('正在初始化完整访问统计系统...');
               
@@ -3051,8 +3079,8 @@
             });
           }
         }
-
-                // 初始化完整访问统计系统
+        
+        // 初始化完整访问统计系统
         window.visitorCounter = new CompleteVisitorCounter();
         
         // 调试功能：在控制台显示设备信息
@@ -3101,7 +3129,7 @@
         
         // 在控制台输入 testVisitorCounter() 可以手动测试
         console.log('提示：在控制台输入 testVisitorCounter() 可以手动测试访问统计功能');
-        })();
+        window.visitorCounter.init();
     </script>
 
 </body>
