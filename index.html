@@ -20,7 +20,7 @@
       
 
     </script>
-    <script src="//code.bdstatic.com/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
     <style>
         * {
             margin: 0;
@@ -2385,20 +2385,68 @@
           
           // 渲染到页面
           document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('visitor-counter-pos')?.textContent = count;
+            document.getElementById('pv-count')?.textContent = '总访问量：' + count;
           });
         } catch (e) {
           console.error('本地存储操作失败，使用内存临时计数');
           // 内存临时计数（页面刷新后重置）
           let tempCount = 1;
           document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('visitor-counter-pos')?.textContent = tempCount;
+            document.getElementById('pv-count')?.textContent = '总访问量：' + tempCount;
           });
         }
       } else {
-        // LeanCloud加载成功，使用本地存储+云端备份
+        // LeanCloud加载成功，直接使用云端计数
         try {
-          const pvKey = 'simple_pv';
+          // 绑定到VisitCounter表
+          const VisitCounter = AV.Object.extend('VisitCounter');
+          
+          // 渲染到页面（初始显示加载中）
+          document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('pv-count')?.textContent = '总访问量：加载中...';
+          });
+          
+          // 查询并更新总访问量
+          function updateVisitCount() {
+            const query = new AV.Query(VisitCounter);
+            
+            // 查询总访问量记录
+            query.equalTo('type', 'total').find()
+              .then(results => {
+                if (results.length > 0) {
+                  // 存在记录，直接递增计数
+                  const counter = results[0];
+                  counter.increment('count', 1); // 原子递增
+                  return counter.save();
+                } else {
+                  // 不存在记录，创建新记录
+                  const newCounter = new VisitCounter();
+                  newCounter.set('type', 'total');
+                  newCounter.set('count', 1);
+                  newCounter.set('lastUpdated', Date.now());
+                  return newCounter.save();
+                }
+              })
+              .then(updatedCounter => {
+                if (updatedCounter) {
+                  // 更新页面中的计数器元素
+                  const count = updatedCounter.get('count');
+                  document.getElementById('pv-count')?.textContent = '总访问量：' + count;
+                }
+              })
+              .catch(error => {
+                console.error('统计失败:', error);
+                document.getElementById('pv-count')?.textContent = '总访问量：统计失败';
+              });
+          }
+          
+          // 页面加载完成后执行
+          window.addEventListener('load', updateVisitCount);
+        } catch (e) {
+          console.error('云端统计操作失败:', e);
+          document.getElementById('pv-count')?.textContent = '总访问量：统计错误';
+        }
+      }          const pvKey = 'simple_pv';
           let count = parseInt(localStorage.getItem(pvKey) || '0') + 1;
           localStorage.setItem(pvKey, count);
           
@@ -2414,58 +2462,14 @@
 
 </body>
 
+<!-- 访问量显示元素 -->
+<div style="text-align: center; margin-top: 20px; color: #666;">
+  <span id="pv-count"></span>
+</div>
+
 <!-- 计数器容器（预留，自 jsq.html 要求） -->
 <div id="page-visit-counter" style="display:none"></div>
 
-<!-- 照抄 jsq.html 页面统计脚本（安全调用） -->
-<script>
-// 初始化LeanCloud
-AV.init({
-  appId: VISITOR_CONFIG.appId,
-  appKey: VISITOR_CONFIG.appKey,
-  serverURL: VISITOR_CONFIG.serverURL
-});
 
-// 绑定到VisitCounter表
-const VisitCounter = AV.Object.extend('VisitCounter');
-
-// 云端统计备份（仅在LeanCloud加载成功时执行）
-function backupToCloud() {
-  if (typeof AV !== 'undefined') {
-    try {
-      const query = new AV.Query(VisitCounter);
-      
-      // 查询总访问量记录
-      query.equalTo('type', 'total').find()
-        .then(results => {
-          if (results.length > 0) {
-            // 存在记录，直接递增计数
-            const counter = results[0];
-            counter.increment('count', 1); // 原子递增
-            return counter.save();
-          } else {
-            // 不存在记录，创建新记录
-            const newCounter = new VisitCounter();
-            newCounter.set('type', 'total');
-            newCounter.set('count', 1);
-            newCounter.set('lastUpdated', Date.now());
-            return newCounter.save();
-          }
-        })
-        .then(updatedCounter => {
-          console.log('云端统计备份成功');
-        })
-        .catch(error => {
-          console.error('云端统计备份失败:', error);
-        });
-    } catch (e) {
-      console.error('云端统计备份异常:', e);
-    }
-  }
-}
-
-// 页面加载完成后执行云端备份
-window.addEventListener('load', backupToCloud);
-</script>
 
 </html>
