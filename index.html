@@ -1086,9 +1086,10 @@
         <div class="footer">
             <div class="footer-content">
                 <div class="visitor-counter visitorCounterWrap" id="visitor-counter" style="display:flex;gap:8px;align-items:center;">
-                    <span style="color:#2b6cb0;font-weight:600;white-space:nowrap;">访问量</span>
-                    
-                </div>
+                        <span style="color:#2b6cb0;font-weight:600;white-space:nowrap;">访问量</span>
+                        <!-- 新增：统计数字显示容器，ID必须是visitor-counter-pos -->
+                        <div class='visitorCounterPosition' id="visitor-counter-pos" style="min-width:72px;text-align:left;color:#2b6cb0;font-weight:700;"></div>
+                    </div>
                 <div class="company-info" style="display:flex;flex-direction:column;gap:2px;">
                     <p>© 2025 阳江市江龙精密脚轮有限公司 | 专业脚轮解决方案提供商</p>
                     <p>ISO 9001:2015 质量认证企业 | 100+项技术专利 | 服务全球3000+客户</p>
@@ -2346,90 +2347,64 @@
 
 
 
-    <!-- 极简PV统计：结合LeanCloud实现，带本地降级 -->
     <script>
-      // 检测LeanCloud是否加载成功
+      // 统一更新footer中的visitor-counter-pos（不再使用pv-count）
+      const counterElement = document.getElementById('visitor-counter-pos');
+      if (!counterElement) {
+        console.error('未找到footer中的访问量显示元素（visitor-counter-pos）');
+        return;
+      }
+
+      // 初始化显示加载中
+      counterElement.textContent = '加载中...';
+
+      // LeanCloud统计核心逻辑
       if (typeof AV === 'undefined') {
-        console.warn('LeanCloud CDN加载失败，已切换为本地统计模式');
-        
-        // 纯本地存储实现
+        console.warn('LeanCloud SDK未加载，使用本地统计');
         try {
-          const pvKey = 'jl_total_visits';
+          const pvKey = 'jl_visits';
           let count = parseInt(localStorage.getItem(pvKey) || '0') + 1;
           localStorage.setItem(pvKey, count);
-          
-          // 渲染到页面
-          document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('pv-count')?.textContent = '总访问量：' + count;
-          });
+          counterElement.textContent = count.toLocaleString('zh-CN');
         } catch (e) {
-          console.error('本地存储操作失败，使用内存临时计数');
-          // 内存临时计数（页面刷新后重置）
-          let tempCount = 1;
-          document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('pv-count')?.textContent = '总访问量：' + tempCount;
-          });
+          counterElement.textContent = '1'; // 内存临时计数
+          console.error('本地存储失败:', e);
         }
-      } else {
-        // LeanCloud加载成功，直接使用云端计数
-        try {
-          // 绑定到VisitCounter表
-          const VisitCounter = AV.Object.extend('VisitCounter');
-          
-          // 渲染到页面（初始显示加载中）
-          document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('pv-count')?.textContent = '总访问量：加载中...';
-          });
-          
-          // 查询并更新总访问量
-          function updateVisitCount() {
-            const query = new AV.Query(VisitCounter);
-            
-            // 查询总访问量记录
-            query.equalTo('type', 'total').find()
-              .then(results => {
-                if (results.length > 0) {
-                  // 存在记录，直接递增计数
-                  const counter = results[0];
-                  counter.increment('count', 1); // 原子递增
-                  return counter.save();
-                } else {
-                  // 不存在记录，创建新记录
-                  const newCounter = new VisitCounter();
-                  newCounter.set('type', 'total');
-                  newCounter.set('count', 1);
-                  newCounter.set('lastUpdated', Date.now());
-                  return newCounter.save();
-                }
-              })
-              .then(updatedCounter => {
-                if (updatedCounter) {
-                  // 更新页面中的计数器元素
-                  const count = updatedCounter.get('count');
-                  document.getElementById('pv-count')?.textContent = '总访问量：' + count;
-                }
-              })
-              .catch(error => {
-                console.error('统计失败:', error);
-                document.getElementById('pv-count')?.textContent = '总访问量：统计失败';
-              });
+        return;
+      }
+
+      // LeanCloud云端统计（关联VisitCounter表）
+      try {
+        const VisitCounter = AV.Object.extend('VisitCounter');
+        const query = new AV.Query(VisitCounter);
+
+        // 查总访问量记录，无则创建
+        query.equalTo('type', 'total').first().then(record => {
+          if (record) {
+            record.increment('count', 1); // 原子递增，防并发
+            return record.save();
+          } else {
+            return new VisitCounter({ type: 'total', count: 1 }).save();
           }
-          
-          // 页面加载完成后执行
-          window.addEventListener('load', updateVisitCount);
-        } catch (e) {
-          console.error('云端统计操作失败:', e);
-          document.getElementById('pv-count')?.textContent = '总访问量：统计错误';
-        }
+        }).then(savedRecord => {
+          const cloudCount = savedRecord.get('count');
+          counterElement.textContent = cloudCount.toLocaleString('zh-CN');
+        }).catch(error => {
+          console.error('云端统计失败，降级本地', error);
+          // 降级显示本地计数
+          const localCount = parseInt(localStorage.getItem('jl_visits') || '0') + 1;
+          localStorage.setItem('jl_visits', localCount);
+          counterElement.textContent = localCount.toLocaleString('zh-CN');
+        });
+      } catch (e) {
+        counterElement.textContent = '统计错误';
+        console.error('统计逻辑异常:', e);
       }
     </script>
 
 </body>
 
-<!-- 访问量显示元素 -->
-<div style="text-align: center; margin-top: 20px; color: #666;">
-  <span id="pv-count"></span>
-</div>
+
 
 <!-- 计数器容器（预留，自 jsq.html 要求） -->
 <div id="page-visit-counter" style="display:none"></div>
