@@ -1087,7 +1087,7 @@
             <div class="footer-content">
                 <div class="visitor-counter visitorCounterWrap" id="visitor-counter" style="display:flex;gap:8px;align-items:center;">
                     <span style="color:#2b6cb0;font-weight:600;white-space:nowrap;">访问量</span>
-                    <div class='visitorCounterPosition' id="visitor-counter-pos" style="min-width:72px;text-align:left;color:#2b6cb0;font-weight:700;"></div>
+                    
                 </div>
                 <div class="company-info" style="display:flex;flex-direction:column;gap:2px;">
                     <p>© 2025 阳江市江龙精密脚轮有限公司 | 专业脚轮解决方案提供商</p>
@@ -2020,7 +2020,7 @@
                         <ul>
                             <li><strong>轮子直径:</strong> ${wheel ? `${wheel.diameter}mm` : '--'}</li>
                             <li><strong>单轮载重:</strong> <span style=\"font-weight: bold; color: #2b6cb0;\">${load.toFixed(2)} kg</span></li>
-                            <li><strong>总高度:</strong> ${wheel ? getWheelHeight(wheel.diameter) : '--'}
+                            <li><strong>总高度:</strong> ${wheel ? getWheelHeightRange(wheel.diameter) : '--'}
                                 ${(() => {
                                     if (!wheel || !heightReq) return '';
                                     const h = wheel.diameter * 1.4;
@@ -2094,7 +2094,7 @@
                             const ul = schemeCard.querySelector('ul');
                             if (ul && newWheel) {
                                 ul.children[0].innerHTML = `<strong>轮子直径:</strong> ${newWheel.diameter}mm`;
-                                ul.children[2].innerHTML = `<strong>总高度:</strong> ${getWheelHeight(newWheel.diameter)}${(() => {
+                                ul.children[2].innerHTML = `<strong>总高度:</strong> ${getWheelHeightRange(newWheel.diameter)}${(() => {
                                     if (!heightReq) return '';
                                     const h = newWheel.diameter * 1.4;
                                     const diff = Math.abs(h - heightReq);
@@ -2339,37 +2339,12 @@
             return "工业脚轮支架";
         }
         // 计算轮子高度（1.4倍直径）
-        function getWheelHeight(diameter) {
+        function getWheelHeightRange(diameter) {
             return `${Math.round(diameter * 1.4)} mm`;
         }
     </script>
 
-    <!-- 访问计数：依赖脚本与全局参数 -->
-    <script type="text/javascript" src="https://1ms.508mallsys.com/js/dist/frontend.min.js"></script>
-    <script type="text/javascript" src="https://1ms.508mallsys.com/js/dist/monitor.min.js"></script>
-    <script>
-      // 最小化全局配置（与 jsq.html 保持一致字段名）
-      window._aid = 11112263; // 站点标识
-      window._siteDomain = 'https://www.jianglongcaster.com';
-      window.statId = (typeof window.statId !== 'undefined') ? window.statId : -1;
-      // 目标页面栏目ID（如需按页维度细分可替换此值），产品详情可把 pdId 改成实际产品ID
-      const pageColId = 12;
 
-      // 调用原有统计与日志
-      try {
-        if (window.Site && typeof Site.total === 'function') {
-          Site.total({ colId: pageColId, pdId: -1, ndId: -1, sc: 0, statId: (typeof statId !== 'undefined' ? statId : -1) });
-        }
-      } catch (e) { console.warn('Site.total 调用失败', e); }
-
-      try { window.Site && typeof Site.sendBrowerInfo === 'function' && Site.sendBrowerInfo(false); } catch (e) {}
-      try { window.Site && typeof Site.ajaxLogDog === 'function' && Site.ajaxLogDog(200002, 1); } catch (e) {}
-
-      // 访问统计系统已移除 countapi.xyz 相关代码
-      // 现在仅使用 LeanCloud 进行统计
-      console.log('访问统计系统已初始化 (仅使用 LeanCloud)');
-      
-    </script>
 
     <!-- 极简PV统计：结合LeanCloud实现，带本地降级 -->
     <script>
@@ -2445,17 +2420,6 @@
         } catch (e) {
           console.error('云端统计操作失败:', e);
           document.getElementById('pv-count')?.textContent = '总访问量：统计错误';
-        }
-      }          const pvKey = 'simple_pv';
-          let count = parseInt(localStorage.getItem(pvKey) || '0') + 1;
-          localStorage.setItem(pvKey, count);
-          
-          // 渲染到页面
-          document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('visitor-counter-pos')?.textContent = count;
-          });
-        } catch (e) {
-          console.error('本地存储操作失败，直接使用云端计数');
         }
       }
     </script>
