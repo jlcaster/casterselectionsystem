@@ -2384,7 +2384,7 @@
           console.warn('LeanCloud SDK未加载，使用本地统计');
           try {
             const pvKey = 'jl_visits';
-            let count = parseInt(localStorage.getItem(pvKey) || '0') + 1;
+            let count = parseInt(localStorage.getItem(pvKey) || '16000') + 1;
             localStorage.setItem(pvKey, count);
             counterElement.textContent = count.toLocaleString('zh-CN');
           } catch (e) {
@@ -2405,7 +2405,7 @@
             record.increment('count', 1); // 原子递增，防并发
             return record.save();
           } else {
-            return new VisitCounter({ type: 'total', count: 1 }).save();
+            return new VisitCounter({ type: 'total', count: 16000 }).save();
           }
         }).then(savedRecord => {
           const cloudCount = savedRecord.get('count');
@@ -2413,7 +2413,7 @@
         }).catch(error => {
           console.error('云端统计失败，降级本地', error);
           // 降级显示本地计数
-          const localCount = parseInt(localStorage.getItem('jl_visits') || '0') + 1;
+          const localCount = parseInt(localStorage.getItem('jl_visits') || '16000') + 1;
           localStorage.setItem('jl_visits', localCount);
             counterElement.textContent = localCount.toLocaleString('zh-CN');
           });
