@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -2370,9 +2371,6 @@
     <script>
       // 统一更新footer中的visitor-counter-pos（不再使用pv-count）
       document.addEventListener('DOMContentLoaded', function() {
-        // 强制重置本地存储计数
-        localStorage.setItem('jl_visits', '16000');
-
         const counterElement = document.getElementById('visitor-counter-pos');
         if (!counterElement) {
           console.error('未找到footer中的访问量显示元素（visitor-counter-pos）');
@@ -2387,9 +2385,7 @@
           console.warn('LeanCloud SDK未加载，使用本地统计');
           try {
             const pvKey = 'jl_visits';
-            // 强制从16000开始计数，忽略本地存储中已有的值
-            let count = 16000;
-            localStorage.setItem(pvKey, count);
+            let count = parseInt(localStorage.getItem(pvKey) || '16000') + 1;
             localStorage.setItem(pvKey, count);
             counterElement.textContent = count.toLocaleString('zh-CN');
           } catch (e) {
@@ -2406,9 +2402,8 @@
 
         // 查总访问量记录，无则创建
         query.equalTo('type', 'total').first().then(record => {
-          // 无论是否有记录，都设置为16000
           if (record) {
-            record.set('count', 16000);
+            record.increment('count', 1); // 原子递增，防并发
             return record.save();
           } else {
             return new VisitCounter({ type: 'total', count: 16000 }).save();
@@ -2419,9 +2414,7 @@
         }).catch(error => {
           console.error('云端统计失败，降级本地', error);
           // 降级显示本地计数
-          // 降级时也强制从16000开始
-            const localCount = 16000;
-            localStorage.setItem('jl_visits', localCount);
+          const localCount = parseInt(localStorage.getItem('jl_visits') || '16000') + 1;
           localStorage.setItem('jl_visits', localCount);
             counterElement.textContent = localCount.toLocaleString('zh-CN');
           });
